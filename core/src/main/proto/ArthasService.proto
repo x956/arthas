@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+option java_package = "com.taobao.arthas.core.grpc";
+option java_outer_classname = "ArthasServiceProto";
+option java_multiple_files = true;
+
+import "google/protobuf/empty.proto";
+package io.arthas.grpc.api;
+
+service ArthasService{
+  rpc get(google.protobuf.Empty) returns (Properties);
+  rpc getByKey(StringKey) returns (StringValue);
+  rpc update(Properties) returns (Properties);
+}
+
+message StringKey {
+  string key = 1;
+}
+
+message StringValue {
+  string value = 1;
+}
+
+message Properties {
+  map<string, string> properties = 1;
+}
