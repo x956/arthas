@@ -36,6 +36,8 @@ public class Arthas {
                 .setShortName("telnet-port");
         Option httpPort = new TypedOption<Integer>().setType(Integer.class)
                 .setShortName("http-port");
+        Option grpcPort = new TypedOption<Integer>().setType(Integer.class)
+                .setShortName("grpc-port");
         Option sessionTimeout = new TypedOption<Integer>().setType(Integer.class)
                         .setShortName("session-timeout");
 
@@ -50,7 +52,7 @@ public class Arthas {
         Option disabledCommands = new TypedOption<String>().setType(String.class).setShortName("disabled-commands");
 
         CLI cli = CLIs.create("arthas").addOption(pid).addOption(core).addOption(agent).addOption(target)
-                .addOption(telnetPort).addOption(httpPort).addOption(sessionTimeout)
+                .addOption(telnetPort).addOption(httpPort).addOption(grpcPort).addOption(sessionTimeout)
                 .addOption(username).addOption(password)
                 .addOption(tunnelServer).addOption(agentId).addOption(appName).addOption(statUrl).addOption(disabledCommands);
         CommandLine commandLine = cli.parse(Arrays.asList(args));
@@ -72,6 +74,9 @@ public class Arthas {
         }
         if (commandLine.getOptionValue("http-port") != null) {
             configure.setHttpPort((Integer) commandLine.getOptionValue("http-port"));
+        }
+        if (commandLine.getOptionValue("grpc-port") != null) {
+            configure.setGrpcPort((Integer) commandLine.getOptionValue("grpc-port"));
         }
 
         configure.setUsername((String) commandLine.getOptionValue("username"));

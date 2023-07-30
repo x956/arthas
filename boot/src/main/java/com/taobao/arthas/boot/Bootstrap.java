@@ -46,7 +46,7 @@ import com.taobao.middleware.cli.annotations.Summary;
 @Name("arthas-boot")
 @Summary("Bootstrap Arthas")
 @Description("EXAMPLES:\n" + "  java -jar arthas-boot.jar <pid>\n" + "  java -jar arthas-boot.jar --target-ip 0.0.0.0\n"
-                + "  java -jar arthas-boot.jar --telnet-port 9999 --http-port -1\n"
+                + "  java -jar arthas-boot.jar --telnet-port 9999 --http-port -1 --grpc-port 10000\n"
                 + "  java -jar arthas-boot.jar --username admin --password <password>\n"
                 + "  java -jar arthas-boot.jar --tunnel-server 'ws://192.168.10.11:7777/ws' --app-name demoapp\n"
                 + "  java -jar arthas-boot.jar --tunnel-server 'ws://192.168.10.11:7777/ws' --agent-id bvDOe8XbTM2pQWjF4cfw\n"
@@ -63,6 +63,7 @@ import com.taobao.middleware.cli.annotations.Summary;
 public class Bootstrap {
     private static final int DEFAULT_TELNET_PORT = 3658;
     private static final int DEFAULT_HTTP_PORT = 8563;
+    private  static final int DEFAULT_GRPC_PORT = 8566;
     private static final String DEFAULT_TARGET_IP = "127.0.0.1";
     private static File ARTHAS_LIB_DIR;
 
@@ -72,6 +73,7 @@ public class Bootstrap {
     private String targetIp;
     private Integer telnetPort;
     private Integer httpPort;
+    private Integer grpcPort;
     /**
      * @see com.taobao.arthas.core.config.Configure#DEFAULT_SESSION_TIMEOUT_SECONDS
      */
@@ -188,6 +190,12 @@ public class Bootstrap {
     @Description("The target jvm listen http port, default 8563")
     public void setHttpPort(int httpPort) {
         this.httpPort = httpPort;
+    }
+
+    @Option(longName = "grpc-port")
+    @Description("The target jvm listen grpc port, default 8566")
+    public void setGrpcPort(int grpcPort) {
+        this.grpcPort = grpcPort;
     }
 
     @Option(longName = "session-timeout")
@@ -377,6 +385,7 @@ public class Bootstrap {
         // check telnet/http port
         long telnetPortPid = -1;
         long httpPortPid = -1;
+        long grpcPortPid = -1;
         if (bootstrap.getTelnetPortOrDefault() > 0) {
             telnetPortPid = SocketUtils.findTcpListenProcess(bootstrap.getTelnetPortOrDefault());
             if (telnetPortPid > 0) {
@@ -387,6 +396,12 @@ public class Bootstrap {
             httpPortPid = SocketUtils.findTcpListenProcess(bootstrap.getHttpPortOrDefault());
             if (httpPortPid > 0) {
                 AnsiLog.info("Process {} already using port {}", httpPortPid, bootstrap.getHttpPortOrDefault());
+            }
+        }
+        if (bootstrap.getGrpcPortOrDefault() > 0) {
+            grpcPortPid = SocketUtils.findTcpListenProcess(bootstrap.getGrpcPortOrDefault());
+            if (grpcPortPid > 0) {
+                AnsiLog.info("Process {} already using port {}", grpcPortPid, bootstrap.getGrpcPortOrDefault());
             }
         }
 
@@ -412,7 +427,16 @@ public class Bootstrap {
                             pid, bootstrap.getHttpPortOrDefault());
             AnsiLog.error("1. Try to restart arthas-boot, select process {}, shutdown it first with running the 'stop' command.",
                             httpPortPid);
-            AnsiLog.error("2. Or try to use different http port, for example: java -jar arthas-boot.jar --telnet-port 9998 --http-port 9999");
+            AnsiLog.error("2. Or try to use different http port, for example: java -jar arthas-boot.jar --telnet-port 9998 --http-port 9999 --grpc-port 10000");
+            System.exit(1);
+        }
+
+        if (grpcPortPid > 0 && pid != grpcPortPid) {
+            AnsiLog.error("Target process {} is not the process using port {}, you will connect to an unexpected process.",
+                    pid, bootstrap.getGrpcPortOrDefault());
+            AnsiLog.error("1. Try to restart arthas-boot, select process {}, shutdown it first with running the 'stop' command.",
+                    grpcPortPid);
+            AnsiLog.error("2. Or try to use different http port, for example: java -jar arthas-boot.jar --telnet-port 9998 --http-port 9999 --grpc-port 10000");
             System.exit(1);
         }
 
@@ -543,6 +567,11 @@ public class Bootstrap {
                     attachArgs.add("" + bootstrap.getHttpPort());
                 }
 
+                if (bootstrap.getGrpcPort() != null) {
+                    attachArgs.add("-grpc-port");
+                    attachArgs.add("" + bootstrap.getGrpcPort());
+                }
+
                 attachArgs.add("-core");
                 attachArgs.add(new File(arthasHomeDir, "arthas-core.jar").getAbsolutePath());
                 attachArgs.add("-agent");
@@ -640,7 +669,7 @@ public class Bootstrap {
             AnsiLog.error("1. Try to restart arthas-boot, select process {}, shutdown it first with running the 'stop' command.",
                             telnetPortPid);
             AnsiLog.error("2. Or try to stop the existing arthas instance: java -jar arthas-client.jar 127.0.0.1 {} -c \"stop\"", bootstrap.getTelnetPortOrDefault());
-            AnsiLog.error("3. Or try to use different telnet port, for example: java -jar arthas-boot.jar --telnet-port 9998 --http-port -1");
+            AnsiLog.error("3. Or try to use different telnet port, for example: java -jar arthas-boot.jar --telnet-port 9998 --http-port -1 --grpc-port -1");
             System.exit(1);
         }
     }
@@ -671,7 +700,7 @@ public class Bootstrap {
             }
             if (error != null) {
                 AnsiLog.error("The telnet port {} is used, but process {}, you will connect to an unexpected process.", telnetPort, error);
-                AnsiLog.error("Try to use a different telnet port, for example: java -jar arthas-boot.jar --telnet-port 9998 --http-port -1");
+                AnsiLog.error("Try to use a different telnet port, for example: java -jar arthas-boot.jar --telnet-port 9998 --http-port -1 --grpc-port -1");
                 System.exit(1);
             }
 
@@ -823,6 +852,19 @@ public class Bootstrap {
             return this.httpPort;
         }
     }
+
+    public Integer getGrpcPort() {
+        return grpcPort;
+    }
+
+    public int getGrpcPortOrDefault() {
+        if (this.grpcPort == null) {
+            return DEFAULT_GRPC_PORT;
+        } else {
+            return this.grpcPort;
+        }
+    }
+
 
     public String getCommand() {
         return command;

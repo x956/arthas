@@ -1,16 +1,25 @@
 syntax = "proto3";
 
-option java_package = "com.taobao.arthas.core.grpc";
+option java_package = "com.taobao.arthas.core.AutoGrpc";
 option java_outer_classname = "ArthasServiceProto";
 option java_multiple_files = true;
 
 import "google/protobuf/empty.proto";
-package io.arthas.grpc.api;
+package io.grpc.api;
 
 service ArthasService{
-  rpc get(google.protobuf.Empty) returns (Properties);
-  rpc getByKey(StringKey) returns (StringValue);
-  rpc update(Properties) returns (Properties);
+  rpc SayHello(HelloRequest) returns (HelloReply);
+  rpc sysprop_get(google.protobuf.Empty) returns (Properties);
+  rpc sysprop_getByKey(StringKey) returns (StringValue);
+  rpc sysprop_update(Properties) returns (Properties);
+}
+
+message HelloRequest {
+  string name = 1;
+}
+
+message HelloReply {
+  string message = 1;
 }
 
 message StringKey {

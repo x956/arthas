@@ -12,6 +12,7 @@ REM ----------------------------------------------------------------------------
 set ERROR_CODE=0
 set TELNET_PORT=3658
 set HTTP_PORT=8563
+set GRPC_PORT=8566
 
 set BASEDIR=%~dp0
 
@@ -68,10 +69,12 @@ if not %1/==/ (
 
 if not "%telnet-port%"=="" set TELNET_PORT=%telnet-port%
 if not "%http-port%"=="" set HTTP_PORT=%http-port%
+if not "%grpc-port%"=="" set GRPC_PORT=%grpc-port%
 
 echo JAVA_HOME: %JAVA_HOME%
 echo telnet port: %TELNET_PORT%
 echo http port: %HTTP_PORT%
+echo grpc port: %GRPC_PORT%
 
 REM Setup JAVA_HOME
 if "%JAVA_HOME%" == "" goto noJavaHome
@@ -98,7 +101,7 @@ echo NB: JAVA_HOME should point to a JDK not a JRE.
 goto exit_bat
 
 :okJava
-%JAVACMD% -Dfile.encoding=UTF-8 %BOOT_CLASSPATH% -jar "%CORE_JAR%" -pid "%PID%"  -target-ip 127.0.0.1 -telnet-port %TELNET_PORT% -http-port %HTTP_PORT% -core "%CORE_JAR%" -agent "%AGENT_JAR%"
+%JAVACMD% -Dfile.encoding=UTF-8 %BOOT_CLASSPATH% -jar "%CORE_JAR%" -pid "%PID%"  -target-ip 127.0.0.1 -telnet-port %TELNET_PORT% -http-port %HTTP_PORT% -grpc-port %GRPC_PORT% -core "%CORE_JAR%" -agent "%AGENT_JAR%"
 if %ERRORLEVEL% NEQ 0 goto exit_bat
 if %exitProcess%==1 goto exit_bat
 goto attachSuccess

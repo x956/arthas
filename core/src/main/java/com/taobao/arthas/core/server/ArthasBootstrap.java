@@ -51,6 +51,7 @@ import com.taobao.arthas.core.env.ArthasEnvironment;
 import com.taobao.arthas.core.env.MapPropertySource;
 import com.taobao.arthas.core.env.PropertiesPropertySource;
 import com.taobao.arthas.core.env.PropertySource;
+import com.taobao.arthas.core.grpc.server.GrpcTermServer;
 import com.taobao.arthas.core.security.SecurityAuthenticator;
 import com.taobao.arthas.core.security.SecurityAuthenticatorImpl;
 import com.taobao.arthas.core.server.instrument.ClassLoader_Instrument;
@@ -363,6 +364,12 @@ public class ArthasBootstrap {
             configure.setHttpPort(newHttpPort);
             logger().info("generate random http port: " + newHttpPort);
         }
+        if (configure.getGrpcPort() != null && configure.getGrpcPort() == 0) {
+            int newGrpcPort = SocketUtils.findAvailableTcpPort();
+            configure.setGrpcPort(newGrpcPort);
+            logger().info("generate random grpc port: " + newGrpcPort);
+        }
+
         // try to find appName
         if (configure.getAppName() == null) {
             configure.setAppName(System.getProperty(ArthasConstants.PROJECT_NAME,
@@ -430,6 +437,13 @@ public class ArthasBootstrap {
                             options.getConnectionTimeout(), workerGroup, httpSessionManager));
                 }
                 logger().info("http port is {}, skip bind http server.", configure.getHttpPort());
+            }
+            if (configure.getGrpcPort() != null && configure.getGrpcPort() > 0) {
+                logger().info("try to bind grpc server, host: {}, port: {}.", configure.getIp(), configure.getGrpcPort());
+                shellServer.registerTermServer(new GrpcTermServer(configure.getIp(), configure.getGrpcPort(),
+                        options.getConnectionTimeout(),workerGroup,httpSessionManager));
+            } else {
+                logger().info("grpc port is {}, skip bind grpc server.", configure.getGrpcPort());
             }
 
             for (CommandResolver resolver : resolvers) {

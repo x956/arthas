@@ -25,6 +25,7 @@ public class Configure {
     private String ip;
     private Integer telnetPort;
     private Integer httpPort;
+    private Integer grpcPort;
     private Long javaPid;
     private String arthasCore;
     private String arthasAgent;
@@ -96,6 +97,14 @@ public class Configure {
 
     public Integer getHttpPort() {
         return httpPort;
+    }
+
+    public Integer getGrpcPort() {
+        return grpcPort;
+    }
+
+    public void setGrpcPort(Integer grpcPort) {
+        this.grpcPort = grpcPort;
     }
 
     public long getJavaPid() {
