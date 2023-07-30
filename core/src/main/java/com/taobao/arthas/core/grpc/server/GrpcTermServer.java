@@ -2,20 +2,15 @@ package com.taobao.arthas.core.grpc.server;
 
 import com.alibaba.arthas.deps.org.slf4j.Logger;
 import com.alibaba.arthas.deps.org.slf4j.LoggerFactory;
-import com.taobao.arthas.common.AnsiLog;
 import com.taobao.arthas.core.grpc.ArthasService;
 import com.taobao.arthas.core.shell.future.Future;
 import com.taobao.arthas.core.shell.handlers.Handler;
 import com.taobao.arthas.core.shell.term.Term;
 import com.taobao.arthas.core.shell.term.TermServer;
-import com.taobao.arthas.core.shell.term.impl.http.NettyWebsocketTtyBootstrap;
-import com.taobao.arthas.core.shell.term.impl.http.session.HttpSessionManager;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
-import io.netty.util.concurrent.EventExecutorGroup;
 
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
 
 public class GrpcTermServer extends TermServer {
 
@@ -23,32 +18,27 @@ public class GrpcTermServer extends TermServer {
 
 //    private Handler<Term> termHandler;
 //    private NettyWebsocketTtyBootstrap bootstrap;
-    private String hostIp;
     private int port;
-    private long connectionTimeout;
+    private Server grpcServer;
 
-    private Server server;
 
-    private EventExecutorGroup workerGroup;
-    private HttpSessionManager httpSessionManager;
-
-    public GrpcTermServer(String hostIp, int port, long connectionTimeout, EventExecutorGroup workerGroup, HttpSessionManager httpSessionManager) {
-        this.hostIp = hostIp;
+    public GrpcTermServer(int port) {
+//        this.hostIp = hostIp;
         this.port = port;
-        this.connectionTimeout = connectionTimeout;
-        this.workerGroup = workerGroup;
-        this.httpSessionManager = httpSessionManager;
+//        this.connectionTimeout = connectionTimeout;
+//        this.workerGroup = workerGroup;
+//        this.httpSessionManager = httpSessionManager;
     }
 
     @Override
     public TermServer termHandler(Handler<Term> handler) {
-        return null;
+        return this;
     }
 
     @Override
     public TermServer listen(Handler<Future<TermServer>> listenHandler) {
         try {
-            server = ServerBuilder.forPort(port)
+            grpcServer = ServerBuilder.forPort(port)
                     .addService(new ArthasService())
                     .build()
                     .start();
@@ -58,8 +48,8 @@ public class GrpcTermServer extends TermServer {
                 public void run() {
                     // Use stderr here since the logger may have been reset by its JVM shutdown hook.
                     System.err.println("*** shutting down gRPC server since JVM is shutting down");
-                    if (server != null) {
-                        server.shutdown();
+                    if (grpcServer != null) {
+                        grpcServer.shutdown();
                     }
                     System.err.println("*** server shut down");
                 }
@@ -67,13 +57,12 @@ public class GrpcTermServer extends TermServer {
         }catch (IOException e) {
             throw new RuntimeException(e);
         }
-
-        return null;
+        return this;
     }
 
     @Override
     public int actualPort() {
-        return 0;
+        return grpcServer.getPort();
     }
 
     @Override
@@ -83,9 +72,8 @@ public class GrpcTermServer extends TermServer {
 
     @Override
     public void close(Handler<Future<Void>> completionHandler) {
-        if (server != null) {
-            server.shutdown();
-            AnsiLog.info("grpc server shut down");
+        if (grpcServer != null) {
+            grpcServer.shutdown();
             if (completionHandler != null) {
                 completionHandler.handle(Future.<Void>succeededFuture());
             }
