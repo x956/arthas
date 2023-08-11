@@ -3,23 +3,24 @@ syntax = "proto3";
 option java_package = "com.taobao.arthas.core.AutoGrpc";
 option java_outer_classname = "ArthasServiceProto";
 option java_multiple_files = true;
-
 import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/any.proto";
+
 package io.grpc.api;
 
-service ArthasService{
-  rpc SayHello(HelloRequest) returns (HelloReply);
-  rpc sysprop_get(google.protobuf.Empty) returns (Properties);
-  rpc sysprop_getByKey(StringKey) returns (StringValue);
-  rpc sysprop_update(Properties) returns (Properties);
+service SystemProperty {
+  rpc get(google.protobuf.Empty) returns (Properties);
+  rpc getByKey(StringKey) returns (StringValue);
+  rpc update(Properties) returns (Properties);
 }
 
-message HelloRequest {
-  string name = 1;
+service Pwd{
+  rpc pwd(google.protobuf.Empty) returns (StringValue);
 }
 
-message HelloReply {
-  string message = 1;
+service Watch{
+  rpc watch(WatchRequest) returns (stream WatchResponse);
 }
 
 message StringKey {
@@ -32,4 +33,35 @@ message StringValue {
 
 message Properties {
   map<string, string> properties = 1;
+}
+
+message WatchRequest {
+  string classPattern = 1;
+  string methodPattern = 2;
+  string express = 3;
+  string conditionExpress = 4;
+  bool isBefore = 5;
+  bool isFinish = 6;
+  bool isException = 7;
+  bool isSuccess = 8;
+  int32 expand = 9;
+  int32 sizeLimit = 10;
+  bool isRegEx = 11;
+  int32 numberOfLimit = 12;
+  string excludeClassPattern = 13;
+  int64 listenerId = 14;
+  bool verbose = 15;
+  int32 maxNumOfMatchedClass = 16;
+}
+
+message WatchResponse {
+  int32 jobId = 1;
+  google.protobuf.Timestamp ts = 2;
+  double cost = 3;
+  google.protobuf.Any value = 4;
+  int32 sizeLimit = 5;
+  string className = 6;
+  string methodName = 7;
+  string accessPoint = 8;
+  string message = 9;
 }

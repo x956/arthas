@@ -2,15 +2,19 @@ package com.taobao.arthas.core.grpc.server;
 
 import com.alibaba.arthas.deps.org.slf4j.Logger;
 import com.alibaba.arthas.deps.org.slf4j.LoggerFactory;
-import com.taobao.arthas.core.grpc.ArthasService;
+import com.taobao.arthas.core.grpc.service.PwdCommandService;
+import com.taobao.arthas.core.grpc.service.SystemPropertyCommandService;
+import com.taobao.arthas.core.grpc.service.WatchCommandService;
 import com.taobao.arthas.core.shell.future.Future;
 import com.taobao.arthas.core.shell.handlers.Handler;
+import com.taobao.arthas.core.shell.session.SessionManager;
 import com.taobao.arthas.core.shell.term.Term;
 import com.taobao.arthas.core.shell.term.TermServer;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 
 import java.io.IOException;
+import java.lang.instrument.Instrumentation;
 
 public class GrpcTermServer extends TermServer {
 
@@ -21,13 +25,16 @@ public class GrpcTermServer extends TermServer {
     private int port;
     private Server grpcServer;
 
+    private Instrumentation instrumentation;
 
-    public GrpcTermServer(int port) {
+
+    public GrpcTermServer(int port, Instrumentation instrumentation) {
 //        this.hostIp = hostIp;
         this.port = port;
 //        this.connectionTimeout = connectionTimeout;
 //        this.workerGroup = workerGroup;
 //        this.httpSessionManager = httpSessionManager;
+        this.instrumentation = instrumentation;
     }
 
     @Override
@@ -39,7 +46,9 @@ public class GrpcTermServer extends TermServer {
     public TermServer listen(Handler<Future<TermServer>> listenHandler) {
         try {
             grpcServer = ServerBuilder.forPort(port)
-                    .addService(new ArthasService())
+                    .addService(new PwdCommandService())
+                    .addService(new SystemPropertyCommandService())
+                    .addService(new WatchCommandService(instrumentation))
                     .build()
                     .start();
             logger.info("Server started, listening on " + port);

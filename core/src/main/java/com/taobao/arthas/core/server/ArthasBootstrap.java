@@ -106,6 +106,9 @@ public class ArthasBootstrap {
     private InstrumentTransformer classLoaderInstrumentTransformer;
     private Thread shutdown;
     private ShellServer shellServer;
+
+    private GrpcTermServer grpcTermServer;
+
     private ScheduledExecutorService executorService;
     private SessionManager sessionManager;
     private TunnelClient tunnelClient;
@@ -440,7 +443,7 @@ public class ArthasBootstrap {
             }
             if (configure.getGrpcPort() != null && configure.getGrpcPort() > 0) {
                 logger().info("try to bind grpc server, host: {}, port: {}.", configure.getIp(), configure.getGrpcPort());
-                GrpcTermServer grpcTermServer = new GrpcTermServer(configure.getGrpcPort());
+                grpcTermServer = new GrpcTermServer(configure.getGrpcPort(), instrumentation);
                 grpcTermServer.listen(null);
 //                shellServer.registerTermServer(new GrpcTermServer(configure.getIp(), configure.getGrpcPort(),
 //                        options.getConnectionTimeout(),workerGroup,httpSessionManager));
@@ -542,6 +545,9 @@ public class ArthasBootstrap {
         }
         if (classLoaderInstrumentTransformer != null) {
             instrumentation.removeTransformer(classLoaderInstrumentTransformer);
+        }
+        if(grpcTermServer != null){
+            grpcTermServer.close();
         }
         // clear the reference in Spy class.
         cleanUpSpyReference();
