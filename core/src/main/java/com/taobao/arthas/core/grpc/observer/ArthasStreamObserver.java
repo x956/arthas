@@ -17,4 +17,8 @@ public interface ArthasStreamObserver<T>  {
 
     void register(AdviceListener listener, ClassFileTransformer transformer);
 
+    void unregister();
+
+    void end();
+
 }

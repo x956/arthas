@@ -10,14 +10,11 @@ import com.taobao.arthas.core.advisor.AdviceListener;
 import com.taobao.arthas.core.advisor.AdviceWeaver;
 import com.taobao.arthas.core.advisor.Enhancer;
 import com.taobao.arthas.core.advisor.InvokeTraceable;
-import com.taobao.arthas.core.command.model.EnhancerModel;
 import com.taobao.arthas.core.command.monitor200.AbstractTraceAdviceListener;
 import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
 import com.taobao.arthas.core.grpc.observer.impl.ArthasStreamObserverImpl;
 import com.taobao.arthas.core.grpc.service.advisor.WatchRpcAdviceListener;
-import com.taobao.arthas.core.shell.session.Session;
-import com.taobao.arthas.core.shell.session.SessionManager;
-import com.taobao.arthas.core.util.Constants;
+import com.taobao.arthas.core.server.ArthasBootstrap;
 import com.taobao.arthas.core.util.LogUtil;
 import com.taobao.arthas.core.util.SearchUtils;
 import com.taobao.arthas.core.util.StringUtils;
@@ -73,7 +70,7 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
     @Override
     public String toString() {
         return "WatchCommandService{" +
-                ", classPattern='" + classPattern + '\'' +
+                "classPattern='" + classPattern + '\'' +
                 ", methodPattern='" + methodPattern + '\'' +
                 ", express='" + express + '\'' +
                 ", conditionExpress='" + conditionExpress + '\'' +
@@ -102,7 +99,10 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
         System.out.println("参数初始化完成");
         // arthasStreamObserver 传入到advisor中，实现异步传输数据
         ArthasStreamObserver<WatchResponse> arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver);
-        enhance(arthasStreamObserver);
+//        enhance(arthasStreamObserver);
+        GrpcCommandTask grpcCommandTask = new GrpcCommandTask(arthasStreamObserver, this);
+        System.out.println("开始execute...");
+        ArthasBootstrap.getInstance().execute(grpcCommandTask);
         System.out.println("enhance 激活成功,开始运行...");
 
 //        arthasStreamObserver.onCompleted();
@@ -163,7 +163,11 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
         } else {
             this.numberOfLimit = watchRequest.getNumberOfLimit();
         }
-        this.excludeClassPattern = watchRequest.getExcludeClassPattern();
+        if(watchRequest.getExcludeClassPattern().equals("")){
+            this.excludeClassPattern = null;
+        }else {
+            this.excludeClassPattern = watchRequest.getExcludeClassPattern();
+        }
         this.listenerId = watchRequest.getListenerId();
         this.verbose = watchRequest.getVerbose();
         if(watchRequest.getMaxNumOfMatchedClass() == 0){
@@ -222,9 +226,7 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
 
             Enhancer enhancer = new Enhancer(listener, listener instanceof InvokeTraceable, skipJDKTrace, getClassNameMatcher(), getClassNameExcludeMatcher(), getMethodNameMatcher());
             // 注册通知监听器
-//            process.register(listener, enhancer);
-            // TODO 或许是这里应该有问题，没有注册成功，导致没有执行，客户端也没有返回数据
-            AdviceWeaver.reg(listener);
+            arthasStreamObserver.register(listener, enhancer);
             effect = enhancer.enhance(inst, this.maxNumOfMatchedClass);
             System.out.println("注册完成？？？");
 
@@ -290,6 +292,7 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
             logger.error(msg, e);
             WatchResponse watchResponse = WatchResponse.newBuilder().clear().setMessage(msg).build();
             arthasStreamObserver.onNext(watchResponse);
+            arthasStreamObserver.onCompleted();
 //            process.appendResult(new EnhancerModel(effect, false, msg));
 //            process.end(-1, msg);
         } finally {

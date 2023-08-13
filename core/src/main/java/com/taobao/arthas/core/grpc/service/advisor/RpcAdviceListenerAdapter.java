@@ -150,6 +150,7 @@ public abstract class RpcAdviceListenerAdapter implements AdviceListener, Proces
         WatchResponse watchResponse = WatchResponse.newBuilder().clear().setMessage(message).build();
         arthasStreamObserver.onNext(watchResponse);
         arthasStreamObserver.onCompleted();
+        arthasStreamObserver.end();
     }
 
     public boolean isVerbose() {

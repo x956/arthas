@@ -2,24 +2,17 @@ package com.taobao.arthas.core.grpc.service.advisor;
 
 import com.alibaba.arthas.deps.org.slf4j.Logger;
 import com.alibaba.arthas.deps.org.slf4j.LoggerFactory;
-import com.google.protobuf.Any;
 import com.google.protobuf.Timestamp;
 import com.taobao.arthas.core.AutoGrpc.WatchResponse;
 import com.taobao.arthas.core.advisor.AccessPoint;
 import com.taobao.arthas.core.advisor.Advice;
-import com.taobao.arthas.core.advisor.AdviceListenerAdapter;
 import com.taobao.arthas.core.advisor.ArthasMethod;
-import com.taobao.arthas.core.command.model.ObjectVO;
-import com.taobao.arthas.core.command.model.WatchModel;
-import com.taobao.arthas.core.command.monitor200.WatchCommand;
 import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
 import com.taobao.arthas.core.grpc.service.WatchCommandService;
-import com.taobao.arthas.core.shell.command.CommandProcess;
 import com.taobao.arthas.core.util.LogUtil;
 import com.taobao.arthas.core.util.ThreadLocalWatch;
 
 import java.time.Instant;
-import java.util.Date;
 
 /**
  * @author beiwei30 on 29/11/2016.
@@ -111,7 +104,6 @@ public class WatchRpcAdviceListener extends RpcAdviceListenerAdapter {
                         .setClassName(advice.getClazz().getName())
                         .setMethodName(advice.getMethod().getName());
                 // TODO Object类型传输
-                // TODO 异步结束处理流程
                 if (advice.isBefore()) {
                     watchResponseBuilder.setAccessPoint(AccessPoint.ACCESS_BEFORE.getKey());
                 } else if (advice.isAfterReturning()) {
