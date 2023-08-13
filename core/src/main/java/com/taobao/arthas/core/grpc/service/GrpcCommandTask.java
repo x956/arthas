@@ -27,6 +27,7 @@ public class GrpcCommandTask implements Runnable{
                     + ", please check $HOME/logs/arthas/arthas.log for more details.";
             WatchResponse watchResponse = WatchResponse.newBuilder().clear().setMessage(msg).build();
             arthasStreamObserver.onNext(watchResponse);
+            arthasStreamObserver.end();
             arthasStreamObserver.onCompleted();
         }
     }

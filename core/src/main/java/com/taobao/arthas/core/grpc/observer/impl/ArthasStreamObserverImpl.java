@@ -5,7 +5,6 @@ import com.taobao.arthas.core.advisor.AdviceWeaver;
 import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
 import com.taobao.arthas.core.server.ArthasBootstrap;
 import com.taobao.arthas.core.shell.system.ExecStatus;
-import com.taobao.arthas.core.shell.system.Process;
 import com.taobao.arthas.core.shell.system.ProcessAware;
 import io.grpc.stub.StreamObserver;
 
@@ -18,7 +17,7 @@ public class ArthasStreamObserverImpl<T> implements ArthasStreamObserver<T> {
 
     private AtomicInteger times = new AtomicInteger();
 
-    private Process process;
+    private GrpcProcess process;
 
     private AdviceListener listener = null;
 
@@ -56,6 +55,7 @@ public class ArthasStreamObserverImpl<T> implements ArthasStreamObserver<T> {
             // listener 有可能是其它 command 创建的
             if(processAware.getProcess() == null) {
                 this.process = new GrpcProcess();
+                this.process.setProcessStatus(ExecStatus.RUNNING);
                 processAware.setProcess(this.process);
             }
         }
@@ -70,7 +70,7 @@ public class ArthasStreamObserverImpl<T> implements ArthasStreamObserver<T> {
         if (transformer != null) {
             ArthasBootstrap.getInstance().getTransformerManager().removeTransformer(transformer);
         }
-
+        this.process.setProcessStatus(ExecStatus.TERMINATED);
         if (listener instanceof ProcessAware) {
             // listener有可能其它 command 创建的，所以不能unRge
             if (this.process.equals(((ProcessAware) listener).getProcess())) {

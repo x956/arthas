@@ -9,9 +9,16 @@ import com.taobao.arthas.core.shell.term.Tty;
 import java.util.Date;
 
 public class GrpcProcess implements Process {
+
+    private ExecStatus processStatus;
+
+    public void setProcessStatus(ExecStatus processStatus) {
+        this.processStatus = processStatus;
+    }
+
     @Override
     public ExecStatus status() {
-        return ExecStatus.RUNNING;
+        return processStatus;
     }
 
     @Override

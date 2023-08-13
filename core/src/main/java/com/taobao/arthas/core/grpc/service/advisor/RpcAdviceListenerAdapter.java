@@ -149,8 +149,8 @@ public abstract class RpcAdviceListenerAdapter implements AdviceListener, Proces
                 + ", so command will exit. You can set it with -n option.\n";
         WatchResponse watchResponse = WatchResponse.newBuilder().clear().setMessage(message).build();
         arthasStreamObserver.onNext(watchResponse);
-        arthasStreamObserver.onCompleted();
         arthasStreamObserver.end();
+        arthasStreamObserver.onCompleted();
     }
 
     public boolean isVerbose() {

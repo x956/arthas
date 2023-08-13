@@ -99,17 +99,11 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
         System.out.println("参数初始化完成");
         // arthasStreamObserver 传入到advisor中，实现异步传输数据
         ArthasStreamObserver<WatchResponse> arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver);
-//        enhance(arthasStreamObserver);
         GrpcCommandTask grpcCommandTask = new GrpcCommandTask(arthasStreamObserver, this);
         System.out.println("开始execute...");
         ArthasBootstrap.getInstance().execute(grpcCommandTask);
         System.out.println("enhance 激活成功,开始运行...");
 
-//        arthasStreamObserver.onCompleted();
-//        System.out.println("结束了,如果客户端啥也没有输出,说明服务端根本没有生产数据...");
-//        WatchResponse watchResponse = WatchResponse.newBuilder().build();
-//        arthasStreamObserver.onNext(watchResponse);
-//        arthasStreamObserver.onCompleted();
     }
 
 
@@ -215,9 +209,6 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
                 arthasStreamObserver.onNext(watchResponse);
                 arthasStreamObserver.onCompleted();
                 return;
-//                process.appendResult(new EnhancerModel(effect, false, msg));
-//                process.end(-1, msg);
-//                return;
             }
             boolean skipJDKTrace = false;
             if(listener instanceof AbstractTraceAdviceListener) {
@@ -234,9 +225,8 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
                 String msg = "error happens when enhancing class: "+effect.getThrowable().getMessage();
                 WatchResponse watchResponse = WatchResponse.newBuilder().clear().setMessage(msg).build();
                 arthasStreamObserver.onNext(watchResponse);
+                arthasStreamObserver.end();
                 arthasStreamObserver.onCompleted();
-//                process.appendResult(new EnhancerModel(effect, false, msg));
-//                process.end(1, msg + ", check arthas log: " + LogUtil.loggingFile());
                 return;
             }
 
@@ -246,9 +236,8 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
                     String msg = "effect.getOverLimitMsg()不为空"  + effect.getOverLimitMsg();
                     WatchResponse watchResponse = WatchResponse.newBuilder().clear().setMessage(msg).build();
                     arthasStreamObserver.onNext(watchResponse);
+                    arthasStreamObserver.end();
                     arthasStreamObserver.onCompleted();
-//                    process.appendResult(new EnhancerModel(effect, false));
-//                    process.end(-1);
                     return;
                 }
                 // might be method code too large
@@ -273,6 +262,7 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
 //                process.end(-1, msg);
                 WatchResponse watchResponse2 = WatchResponse.newBuilder().clear().setMessage(msg).build();
                 arthasStreamObserver.onNext(watchResponse2);
+                arthasStreamObserver.end();
                 arthasStreamObserver.onCompleted();
                 return;
             }
@@ -292,6 +282,7 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
             logger.error(msg, e);
             WatchResponse watchResponse = WatchResponse.newBuilder().clear().setMessage(msg).build();
             arthasStreamObserver.onNext(watchResponse);
+            arthasStreamObserver.end();
             arthasStreamObserver.onCompleted();
 //            process.appendResult(new EnhancerModel(effect, false, msg));
 //            process.end(-1, msg);
