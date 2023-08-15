@@ -3,18 +3,15 @@ package com.taobao.arthas.core.grpc.service.advisor;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.taobao.arthas.core.AutoGrpc.WatchResponse;
 import com.taobao.arthas.core.advisor.Advice;
 import com.taobao.arthas.core.advisor.AdviceListener;
 import com.taobao.arthas.core.advisor.ArthasMethod;
 import com.taobao.arthas.core.command.express.ExpressException;
 import com.taobao.arthas.core.command.express.ExpressFactory;
 import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
-import com.taobao.arthas.core.shell.command.CommandProcess;
 import com.taobao.arthas.core.shell.system.Process;
 import com.taobao.arthas.core.shell.system.ProcessAware;
 import com.taobao.arthas.core.util.Constants;
-import com.taobao.arthas.core.util.LogUtil;
 import com.taobao.arthas.core.util.StringUtils;
 
 
@@ -145,12 +142,9 @@ public abstract class RpcAdviceListenerAdapter implements AdviceListener, Proces
      * @param limit   the limit to be printed
      */
     protected void abortProcess(ArthasStreamObserver arthasStreamObserver, int limit) {
-        String message = "Command execution times exceed limit: " + limit
-                + ", so command will exit. You can set it with -n option.\n";
-        WatchResponse watchResponse = WatchResponse.newBuilder().clear().setMessage(message).build();
-        arthasStreamObserver.onNext(watchResponse);
+        arthasStreamObserver.write("Command execution times exceed limit: " + limit
+                + ", so command will exit. You can set it with -n option.\n");
         arthasStreamObserver.end();
-        arthasStreamObserver.onCompleted();
     }
 
     public boolean isVerbose() {

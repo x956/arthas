@@ -1,9 +1,17 @@
 package com.taobao.arthas.core.grpc.observer.impl;
 
+import com.taobao.arthas.core.AutoGrpc.StringValue;
 import com.taobao.arthas.core.advisor.AdviceListener;
 import com.taobao.arthas.core.advisor.AdviceWeaver;
+import com.taobao.arthas.core.command.model.ResultModel;
+import com.taobao.arthas.core.command.model.StatusModel;
+import com.taobao.arthas.core.distribution.ResultDistributor;
+import com.taobao.arthas.core.distribution.impl.GrpcResultDistributorImpl;
+import com.taobao.arthas.core.distribution.impl.TermResultDistributorImpl;
 import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
+import com.taobao.arthas.core.grpc.view.GrpcResultViewResolver;
 import com.taobao.arthas.core.server.ArthasBootstrap;
+import com.taobao.arthas.core.shell.handlers.Handler;
 import com.taobao.arthas.core.shell.system.ExecStatus;
 import com.taobao.arthas.core.shell.system.ProcessAware;
 import io.grpc.stub.StreamObserver;
@@ -23,9 +31,18 @@ public class ArthasStreamObserverImpl<T> implements ArthasStreamObserver<T> {
 
     private ClassFileTransformer transformer;
 
+    private int jobId;
+
+    private ResultDistributor resultDistributor;
+
 
     public ArthasStreamObserverImpl(StreamObserver<T> streamObserver){
         this.streamObserver = streamObserver;
+        if (resultDistributor == null) {
+            resultDistributor = new GrpcResultDistributorImpl(this, ArthasBootstrap.getInstance().getGrpcResultViewResolver());
+        }
+        this.process = new GrpcProcess();
+        this.process.setProcessStatus(ExecStatus.RUNNING);
     }
 
     @Override
@@ -41,6 +58,7 @@ public class ArthasStreamObserverImpl<T> implements ArthasStreamObserver<T> {
     @Override
     public void onCompleted() {
         streamObserver.onCompleted();
+        this.process.setProcessStatus(ExecStatus.TERMINATED);
     }
 
     @Override
@@ -54,8 +72,6 @@ public class ArthasStreamObserverImpl<T> implements ArthasStreamObserver<T> {
             ProcessAware processAware = (ProcessAware) adviceListener;
             // listener 有可能是其它 command 创建的
             if(processAware.getProcess() == null) {
-                this.process = new GrpcProcess();
-                this.process.setProcessStatus(ExecStatus.RUNNING);
                 processAware.setProcess(this.process);
             }
         }
@@ -83,20 +99,52 @@ public class ArthasStreamObserverImpl<T> implements ArthasStreamObserver<T> {
 
     @Override
     public void end() {
-        terminate();
+        end(0);
+    }
+
+    @Override
+    public void end(int statusCode) {
+        end(statusCode, null);
+    }
+
+    @Override
+    public void end(int statusCode, String message) {
+        terminate(statusCode, message);
     }
 
 
-    private synchronized boolean terminate() {
+    private synchronized boolean terminate(int exitCode, String message) {
+        boolean flag;
         if (process.status() != ExecStatus.TERMINATED) {
             //add status message
+            this.appendResult(new StatusModel(exitCode, message));
             if (process != null) {
                 this.unregister();
             }
-            return true;
+            flag = true;
         } else {
-            return false;
+            flag = false;
         }
+        this.onCompleted();
+        return flag;
     }
 
+    @Override
+    public ArthasStreamObserver write(String msg) {
+        StringValue result = StringValue.newBuilder().setValue(msg).build();
+        onNext((T) result);
+        return this;
+    }
+
+    @Override
+    public void appendResult(ResultModel result) {
+        if (process.status() != ExecStatus.RUNNING) {
+            throw new IllegalStateException(
+                    "Cannot write to standard output when " + process.status().name().toLowerCase());
+        }
+        result.setJobId(jobId);
+        if (resultDistributor != null) {
+            resultDistributor.appendResult(result);
+        }
+    }
 }

@@ -2,7 +2,6 @@ package com.taobao.arthas.core.grpc.service;
 
 import com.alibaba.arthas.deps.org.slf4j.Logger;
 import com.alibaba.arthas.deps.org.slf4j.LoggerFactory;
-import com.taobao.arthas.core.AutoGrpc.WatchResponse;
 import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
 
 public class GrpcCommandTask implements Runnable{
@@ -23,12 +22,8 @@ public class GrpcCommandTask implements Runnable{
             this.watchCommandService.enhance(arthasStreamObserver);
         } catch (Throwable t) {
             logger.error("Error during processing the command:", t);
-            String msg = "Error during processing the command: " + t.getClass().getName() + ", message:" + t.getMessage()
-                    + ", please check $HOME/logs/arthas/arthas.log for more details.";
-            WatchResponse watchResponse = WatchResponse.newBuilder().clear().setMessage(msg).build();
-            arthasStreamObserver.onNext(watchResponse);
-            arthasStreamObserver.end();
-            arthasStreamObserver.onCompleted();
+            arthasStreamObserver.end(1, "Error during processing the command: " + t.getClass().getName() + ", message:" + t.getMessage()
+                    + ", please check $HOME/logs/arthas/arthas.log for more details." );
         }
     }
 }

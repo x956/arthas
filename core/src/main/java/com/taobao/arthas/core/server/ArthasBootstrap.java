@@ -52,6 +52,7 @@ import com.taobao.arthas.core.env.MapPropertySource;
 import com.taobao.arthas.core.env.PropertiesPropertySource;
 import com.taobao.arthas.core.env.PropertySource;
 import com.taobao.arthas.core.grpc.server.GrpcTermServer;
+import com.taobao.arthas.core.grpc.view.GrpcResultViewResolver;
 import com.taobao.arthas.core.security.SecurityAuthenticator;
 import com.taobao.arthas.core.security.SecurityAuthenticatorImpl;
 import com.taobao.arthas.core.server.instrument.ClassLoader_Instrument;
@@ -124,6 +125,8 @@ public class ArthasBootstrap {
 
     private ResultViewResolver resultViewResolver;
 
+    private GrpcResultViewResolver grpcResultViewResolver;
+
     private HistoryManager historyManager;
 
     private HttpApiHandler httpApiHandler;
@@ -188,6 +191,7 @@ public class ArthasBootstrap {
 
     private void initBeans() {
         this.resultViewResolver = new ResultViewResolver();
+        this.grpcResultViewResolver = new GrpcResultViewResolver();
         this.historyManager = new HistoryManagerImpl();
     }
 
@@ -669,6 +673,10 @@ public class ArthasBootstrap {
 
     public ResultViewResolver getResultViewResolver() {
         return resultViewResolver;
+    }
+
+    public GrpcResultViewResolver getGrpcResultViewResolver() {
+        return grpcResultViewResolver;
     }
 
     public HistoryManager getHistoryManager() {

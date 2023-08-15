@@ -2,17 +2,17 @@ package com.taobao.arthas.core.grpc.service.advisor;
 
 import com.alibaba.arthas.deps.org.slf4j.Logger;
 import com.alibaba.arthas.deps.org.slf4j.LoggerFactory;
-import com.google.protobuf.Timestamp;
-import com.taobao.arthas.core.AutoGrpc.WatchResponse;
 import com.taobao.arthas.core.advisor.AccessPoint;
 import com.taobao.arthas.core.advisor.Advice;
 import com.taobao.arthas.core.advisor.ArthasMethod;
+import com.taobao.arthas.core.command.model.ObjectVO;
+import com.taobao.arthas.core.command.model.WatchModel;
 import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
 import com.taobao.arthas.core.grpc.service.WatchCommandService;
 import com.taobao.arthas.core.util.LogUtil;
 import com.taobao.arthas.core.util.ThreadLocalWatch;
 
-import java.time.Instant;
+import java.util.Date;
 
 /**
  * @author beiwei30 on 29/11/2016.
@@ -83,43 +83,30 @@ public class WatchRpcAdviceListener extends RpcAdviceListenerAdapter {
             double cost = threadLocalWatch.costInMillis();
             boolean conditionResult = isConditionMet(watchCommandService.getConditionExpress(), advice, cost);
             if (this.isVerbose()) {
-                String message = "Condition express: " + watchCommandService.getConditionExpress() + " , result: " + conditionResult + "\n";
-                WatchResponse watchResponse = WatchResponse.newBuilder().clear().setMessage(message).build();
-                arthasStreamObserver.onNext(watchResponse);
-//                process.write("Condition express: " + command.getConditionExpress() + " , result: " + conditionResult + "\n");
+                arthasStreamObserver.write("Condition express: " + watchCommandService.getConditionExpress() + " , result: " + conditionResult + "\n");
             }
             if (conditionResult) {
                 Object value = getExpressionResult(watchCommandService.getExpress(), advice, cost);
-                WatchResponse.Builder watchResponseBuilder = WatchResponse.newBuilder();
-                // 创建一个表示当前日期和时间的 Instant 对象
-                Instant now = Instant.now();
-                // 转换为 google.protobuf.Timestamp 类型
-                Timestamp timestamp = Timestamp.newBuilder()
-                        .setSeconds(now.getEpochSecond())
-                        .setNanos(now.getNano())
-                        .build();
-                watchResponseBuilder.setTs(timestamp)
-                        .setCost(cost)
-                        .setSizeLimit(watchCommandService.getSizeLimit())
-                        .setClassName(advice.getClazz().getName())
-                        .setMethodName(advice.getMethod().getName());
-                // TODO Object类型传输
-                if (advice.isBefore()) {
-                    watchResponseBuilder.setAccessPoint(AccessPoint.ACCESS_BEFORE.getKey());
-                } else if (advice.isAfterReturning()) {
-                    watchResponseBuilder.setAccessPoint(AccessPoint.ACCESS_AFTER_RETUNING.getKey());
-                } else if (advice.isAfterThrowing()) {
-                    watchResponseBuilder.setAccessPoint(AccessPoint.ACCESS_AFTER_THROWING.getKey());
-                }
-                WatchResponse watchResponse = watchResponseBuilder.build();
-                System.out.println("发送数据到客户端？");
 
-                arthasStreamObserver.onNext(watchResponse);
+                WatchModel model = new WatchModel();
+                model.setTs(new Date());
+                model.setCost(cost);
+                model.setValue(new ObjectVO(value, watchCommandService.getExpand()));
+                model.setSizeLimit(watchCommandService.getSizeLimit());
+                model.setClassName(advice.getClazz().getName());
+                model.setMethodName(advice.getMethod().getName());
+                if (advice.isBefore()) {
+                    model.setAccessPoint(AccessPoint.ACCESS_BEFORE.getKey());
+                } else if (advice.isAfterReturning()) {
+                    model.setAccessPoint(AccessPoint.ACCESS_AFTER_RETUNING.getKey());
+                } else if (advice.isAfterThrowing()) {
+                    model.setAccessPoint(AccessPoint.ACCESS_AFTER_THROWING.getKey());
+                }
+                arthasStreamObserver.appendResult(model);
                 arthasStreamObserver.times().incrementAndGet();
                 if (isLimitExceeded(watchCommandService.getNumberOfLimit(), arthasStreamObserver.times().get())) {
                     abortProcess(arthasStreamObserver, watchCommandService.getNumberOfLimit());
                 }
-                System.out.println("发送完成？");
 
 //                WatchModel model = new WatchModel();
 //                model.setTs(new Date());
@@ -146,15 +133,9 @@ public class WatchRpcAdviceListener extends RpcAdviceListenerAdapter {
             }
         } catch (Throwable e) {
             logger.warn("watch failed.", e);
-            String message = "watch failed, condition is: " + watchCommandService.getConditionExpress() + ", express is: "
+            arthasStreamObserver.end(-1, "watch failed, condition is: " + watchCommandService.getConditionExpress() + ", express is: "
                     + watchCommandService.getExpress() + ", " + e.getMessage() + ", visit " + LogUtil.loggingFile()
-                    + " for more details.";
-            WatchResponse watchResponse = WatchResponse.newBuilder().clear().setMessage(message).build();
-            arthasStreamObserver.onNext(watchResponse);
-            arthasStreamObserver.onError(e);
-//            process.end(-1, "watch failed, condition is: " + command.getConditionExpress() + ", express is: "
-//                    + command.getExpress() + ", " + e.getMessage() + ", visit " + LogUtil.loggingFile()
-//                    + " for more details.");
+                    + " for more details.");
         }
     }
 }
