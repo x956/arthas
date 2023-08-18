@@ -252,4 +252,9 @@ public class JobControllerImpl implements JobController {
     public void close() {
         close(null);
     }
+
+    public int generateGrpcJobId(){
+        int jobId = idGenerator.incrementAndGet();
+        return jobId;
+    }
 }

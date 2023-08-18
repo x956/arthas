@@ -16,6 +16,7 @@ import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
 import com.taobao.arthas.core.grpc.observer.impl.ArthasStreamObserverImpl;
 import com.taobao.arthas.core.grpc.service.advisor.WatchRpcAdviceListener;
 import com.taobao.arthas.core.server.ArthasBootstrap;
+import com.taobao.arthas.core.shell.system.impl.JobControllerImpl;
 import com.taobao.arthas.core.util.LogUtil;
 import com.taobao.arthas.core.util.SearchUtils;
 import com.taobao.arthas.core.util.StringUtils;
@@ -34,6 +35,8 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
     private static final Logger logger = LoggerFactory.getLogger(WatchCommandService.class);
 
     private WatchRequest watchRequest;
+
+    private ArthasStreamObserver arthasStreamObserver;
     private String classPattern;
     private String methodPattern;
     private String express;
@@ -64,8 +67,12 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
 
     private Instrumentation instrumentation;
 
-    public WatchCommandService(Instrumentation instrumentation) {
+    private JobControllerImpl jobController;
+
+
+    public WatchCommandService(Instrumentation instrumentation, JobControllerImpl jobController) {
         this.instrumentation = instrumentation;
+        this.jobController = jobController;
     }
 
     @Override
@@ -99,15 +106,26 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
 
         System.out.println("参数初始化完成");
         // arthasStreamObserver 传入到advisor中，实现异步传输数据
-        ArthasStreamObserver<StringValue> arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver);
-        GrpcCommandTask grpcCommandTask = new GrpcCommandTask(arthasStreamObserver, this);
+        ArthasStreamObserver<StringValue> arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver, jobController);
+        this.arthasStreamObserver = arthasStreamObserver;
+        WatchTask watchTask = new WatchTask();
         System.out.println("开始execute...");
-        ArthasBootstrap.getInstance().execute(grpcCommandTask);
+        ArthasBootstrap.getInstance().execute(watchTask);
         System.out.println("enhance 激活成功,开始运行...");
-
     }
 
-
+    private class WatchTask implements Runnable{
+        @Override
+        public void run() {
+            try {
+                enhance(arthasStreamObserver);
+            } catch (Throwable t) {
+                logger.error("Error during processing the command:", t);
+                arthasStreamObserver.end(1, "Error during processing the command: " + t.getClass().getName() + ", message:" + t.getMessage()
+                        + ", please check $HOME/logs/arthas/arthas.log for more details." );
+            }
+        }
+    }
 
     private Matcher getClassNameMatcher() {
         if (classNameMatcher == null) {

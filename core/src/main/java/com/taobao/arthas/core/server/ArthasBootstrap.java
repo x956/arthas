@@ -447,7 +447,7 @@ public class ArthasBootstrap {
             }
             if (configure.getGrpcPort() != null && configure.getGrpcPort() > 0) {
                 logger().info("try to bind grpc server, host: {}, port: {}.", configure.getIp(), configure.getGrpcPort());
-                grpcTermServer = new GrpcTermServer(configure.getGrpcPort(), instrumentation);
+                grpcTermServer = new GrpcTermServer(configure.getGrpcPort(), instrumentation, shellServer.getJobController());
                 grpcTermServer.listen(null);
 //                shellServer.registerTermServer(new GrpcTermServer(configure.getIp(), configure.getGrpcPort(),
 //                        options.getConnectionTimeout(),workerGroup,httpSessionManager));

@@ -21,7 +21,6 @@ public class WatchRpcAdviceListener extends RpcAdviceListenerAdapter {
 
     private static final Logger logger = LoggerFactory.getLogger(WatchRpcAdviceListener.class);
     private final ThreadLocalWatch threadLocalWatch = new ThreadLocalWatch();
-//    private WatchCommand command;
 
     private WatchCommandService watchCommandService;
 
@@ -54,7 +53,6 @@ public class WatchRpcAdviceListener extends RpcAdviceListenerAdapter {
         if (watchCommandService.isSuccess()) {
             watching(advice);
         }
-
         finishing(advice);
     }
 
@@ -65,7 +63,6 @@ public class WatchRpcAdviceListener extends RpcAdviceListenerAdapter {
         if (watchCommandService.isException()) {
             watching(advice);
         }
-
         finishing(advice);
     }
 
@@ -107,29 +104,6 @@ public class WatchRpcAdviceListener extends RpcAdviceListenerAdapter {
                 if (isLimitExceeded(watchCommandService.getNumberOfLimit(), arthasStreamObserver.times().get())) {
                     abortProcess(arthasStreamObserver, watchCommandService.getNumberOfLimit());
                 }
-
-//                WatchModel model = new WatchModel();
-//                model.setTs(new Date());
-//                model.setCost(cost);
-//                model.setValue(new ObjectVO(value, command.getExpand()));
-//                model.setSizeLimit(command.getSizeLimit());
-//                model.setClassName(advice.getClazz().getName());
-//                model.setMethodName(advice.getMethod().getName());
-//                if (advice.isBefore()) {
-//                    model.setAccessPoint(AccessPoint.ACCESS_BEFORE.getKey());
-//                } else if (advice.isAfterReturning()) {
-//                    model.setAccessPoint(AccessPoint.ACCESS_AFTER_RETUNING.getKey());
-//                } else if (advice.isAfterThrowing()) {
-//                    model.setAccessPoint(AccessPoint.ACCESS_AFTER_THROWING.getKey());
-//                }
-//                // 使用watchResponseBuilder构建
-//
-////                arthasStreamObserver.onNext(model);
-//                process.appendResult(model);
-//                process.times().incrementAndGet();
-//                if (isLimitExceeded(command.getNumberOfLimit(), process.times().get())) {
-//                    abortProcess(process, command.getNumberOfLimit());
-//                }
             }
         } catch (Throwable e) {
             logger.warn("watch failed.", e);

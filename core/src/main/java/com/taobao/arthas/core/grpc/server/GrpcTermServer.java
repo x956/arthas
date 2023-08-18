@@ -7,7 +7,7 @@ import com.taobao.arthas.core.grpc.service.SystemPropertyCommandService;
 import com.taobao.arthas.core.grpc.service.WatchCommandService;
 import com.taobao.arthas.core.shell.future.Future;
 import com.taobao.arthas.core.shell.handlers.Handler;
-import com.taobao.arthas.core.shell.session.SessionManager;
+import com.taobao.arthas.core.shell.system.impl.JobControllerImpl;
 import com.taobao.arthas.core.shell.term.Term;
 import com.taobao.arthas.core.shell.term.TermServer;
 import io.grpc.Server;
@@ -25,16 +25,20 @@ public class GrpcTermServer extends TermServer {
     private int port;
     private Server grpcServer;
 
-    private Instrumentation instrumentation;
+    private final Instrumentation instrumentation;
+
+    private final JobControllerImpl jobController;
 
 
-    public GrpcTermServer(int port, Instrumentation instrumentation) {
+
+    public GrpcTermServer(int port, Instrumentation instrumentation, JobControllerImpl jobController) {
 //        this.hostIp = hostIp;
         this.port = port;
 //        this.connectionTimeout = connectionTimeout;
 //        this.workerGroup = workerGroup;
 //        this.httpSessionManager = httpSessionManager;
         this.instrumentation = instrumentation;
+        this.jobController = jobController;
     }
 
     @Override
@@ -46,9 +50,9 @@ public class GrpcTermServer extends TermServer {
     public TermServer listen(Handler<Future<TermServer>> listenHandler) {
         try {
             grpcServer = ServerBuilder.forPort(port)
-                    .addService(new PwdCommandService())
-                    .addService(new SystemPropertyCommandService())
-                    .addService(new WatchCommandService(instrumentation))
+                    .addService(new PwdCommandService(jobController))
+                    .addService(new SystemPropertyCommandService(jobController))
+                    .addService(new WatchCommandService(instrumentation, jobController))
                     .build()
                     .start();
             logger.info("Server started, listening on " + port);

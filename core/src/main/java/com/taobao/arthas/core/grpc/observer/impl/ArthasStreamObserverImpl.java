@@ -7,13 +7,11 @@ import com.taobao.arthas.core.command.model.ResultModel;
 import com.taobao.arthas.core.command.model.StatusModel;
 import com.taobao.arthas.core.distribution.ResultDistributor;
 import com.taobao.arthas.core.distribution.impl.GrpcResultDistributorImpl;
-import com.taobao.arthas.core.distribution.impl.TermResultDistributorImpl;
 import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
-import com.taobao.arthas.core.grpc.view.GrpcResultViewResolver;
 import com.taobao.arthas.core.server.ArthasBootstrap;
-import com.taobao.arthas.core.shell.handlers.Handler;
 import com.taobao.arthas.core.shell.system.ExecStatus;
 import com.taobao.arthas.core.shell.system.ProcessAware;
+import com.taobao.arthas.core.shell.system.impl.JobControllerImpl;
 import io.grpc.stub.StreamObserver;
 
 import java.lang.instrument.ClassFileTransformer;
@@ -33,11 +31,15 @@ public class ArthasStreamObserverImpl<T> implements ArthasStreamObserver<T> {
 
     private int jobId;
 
+    private final JobControllerImpl jobController;
+
     private ResultDistributor resultDistributor;
 
 
-    public ArthasStreamObserverImpl(StreamObserver<T> streamObserver){
+    public ArthasStreamObserverImpl(StreamObserver<T> streamObserver, JobControllerImpl jobController){
         this.streamObserver = streamObserver;
+        this.jobController = jobController;
+        this.jobId = jobController.generateGrpcJobId();
         if (resultDistributor == null) {
             resultDistributor = new GrpcResultDistributorImpl(this, ArthasBootstrap.getInstance().getGrpcResultViewResolver());
         }
