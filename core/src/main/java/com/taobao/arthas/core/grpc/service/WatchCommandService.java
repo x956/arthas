@@ -16,7 +16,8 @@ import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
 import com.taobao.arthas.core.grpc.observer.impl.ArthasStreamObserverImpl;
 import com.taobao.arthas.core.grpc.service.advisor.WatchRpcAdviceListener;
 import com.taobao.arthas.core.server.ArthasBootstrap;
-import com.taobao.arthas.core.shell.system.impl.JobControllerImpl;
+import com.taobao.arthas.core.shell.session.Session;
+import com.taobao.arthas.core.shell.session.SessionManager;
 import com.taobao.arthas.core.util.LogUtil;
 import com.taobao.arthas.core.util.SearchUtils;
 import com.taobao.arthas.core.util.StringUtils;
@@ -64,15 +65,10 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
     private boolean verbose;
 
     private int maxNumOfMatchedClass;
+    private SessionManager sessionManager;
 
-    private Instrumentation instrumentation;
-
-    private JobControllerImpl jobController;
-
-
-    public WatchCommandService(Instrumentation instrumentation, JobControllerImpl jobController) {
-        this.instrumentation = instrumentation;
-        this.jobController = jobController;
+    public WatchCommandService(SessionManager sessionManager) {
+        this.sessionManager = sessionManager;
     }
 
     @Override
@@ -106,7 +102,7 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
 
         System.out.println("参数初始化完成");
         // arthasStreamObserver 传入到advisor中，实现异步传输数据
-        ArthasStreamObserver<StringValue> arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver, jobController);
+        ArthasStreamObserver<StringValue> arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver, sessionManager);
         this.arthasStreamObserver = arthasStreamObserver;
         WatchTask watchTask = new WatchTask();
         System.out.println("开始execute...");
@@ -206,21 +202,17 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
     }
 
     void enhance(ArthasStreamObserver arthasStreamObserver) {
-        // 此函数参照EnhancerCommand构建
-//         TOD 找到session的赋值位置
-//         TOD 找到Instrumentation在哪赋值/如何在这里获取ArthasBoostrap中的变量
-//         TOD 明确这个process的作用
-//        Session session = process.session();
-//        if (!session.tryLock()) {
-//            String msg = "someone else is enhancing classes, pls. wait.";
-//            process.appendResult(new EnhancerModel(null, false, msg));
-//            process.end(-1, msg);
-//            return;
-//        }
+        Session session = arthasStreamObserver.session();
+        if (!session.tryLock()) {
+            String msg = "someone else is enhancing classes, pls. wait.";
+            arthasStreamObserver.appendResult(new EnhancerModel(null, false, msg));
+            arthasStreamObserver.end(-1, msg);
+            return;
+        }
         EnhancerAffect effect = null;
-//        int lock = session.getLock();
+        int lock = session.getLock();
         try {
-            Instrumentation inst = this.instrumentation;
+            Instrumentation inst = session.getInstrumentation();
             AdviceListener listener = getAdviceListenerWithId(watchRequest, arthasStreamObserver);
             if (listener == null) {
                 logger.error("advice listener is null");
@@ -271,28 +263,19 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
                 arthasStreamObserver.end(-1,msg);
                 return;
             }
-//            // 这里做个补偿,如果在enhance期间,unLock被调用了,则补偿性放弃
-//            if (session.getLock() == lock) {
-//                if (process.isForeground()) {
-//                    process.echoTips(Constants.Q_OR_CTRL_C_ABORT_MSG + "\n");
-//                }
-//            }
-//
-//            process.appendResult(new EnhancerModel(effect, true));
             arthasStreamObserver.appendResult(new EnhancerModel(effect, true));
 
-            //异步执行，在AdviceListener中结束
+            //异步执行，在RpcAdviceListener中结束
         } catch (Throwable e) {
             String msg = "error happens when enhancing class: "+e.getMessage();
             logger.error(msg, e);
             arthasStreamObserver.appendResult(new EnhancerModel(effect, false, msg));
             arthasStreamObserver.end(-1, msg);
         } finally {
-            System.out.println("执行结束!!!");
-//            if (session.getLock() == lock) {
-//                // enhance结束后解锁
-//                process.session().unLock();
-//            }
+            if (session.getLock() == lock) {
+                // enhance结束后解锁
+                arthasStreamObserver.session().unLock();
+            }
         }
     }
 

@@ -424,6 +424,10 @@ public class ArthasBootstrap {
 
             //worker group
             workerGroup = new NioEventLoopGroup(new DefaultThreadFactory("arthas-TermServer", true));
+            //http api session manager
+            sessionManager = new SessionManagerImpl(options, shellServer.getCommandManager(), shellServer.getJobController());
+            //http api handler
+            httpApiHandler = new HttpApiHandler(historyManager, sessionManager);
 
             // TODO: discover user provided command resolver
             if (configure.getTelnetPort() != null && configure.getTelnetPort() > 0) {
@@ -447,7 +451,7 @@ public class ArthasBootstrap {
             }
             if (configure.getGrpcPort() != null && configure.getGrpcPort() > 0) {
                 logger().info("try to bind grpc server, host: {}, port: {}.", configure.getIp(), configure.getGrpcPort());
-                grpcTermServer = new GrpcTermServer(configure.getGrpcPort(), instrumentation, shellServer.getJobController());
+                grpcTermServer = new GrpcTermServer(configure.getGrpcPort(), sessionManager);
                 grpcTermServer.listen(null);
 //                shellServer.registerTermServer(new GrpcTermServer(configure.getIp(), configure.getGrpcPort(),
 //                        options.getConnectionTimeout(),workerGroup,httpSessionManager));
@@ -466,10 +470,6 @@ public class ArthasBootstrap {
                         + String.valueOf(configure.getHttpPort()));
             }
 
-            //http api session manager
-            sessionManager = new SessionManagerImpl(options, shellServer.getCommandManager(), shellServer.getJobController());
-            //http api handler
-            httpApiHandler = new HttpApiHandler(historyManager, sessionManager);
 
             logger().info("as-server listening on network={};telnet={};http={};timeout={};", configure.getIp(),
                     configure.getTelnetPort(), configure.getHttpPort(), options.getConnectionTimeout());

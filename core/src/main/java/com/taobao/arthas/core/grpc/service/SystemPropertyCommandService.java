@@ -8,6 +8,7 @@ import com.taobao.arthas.core.AutoGrpc.SystemPropertyGrpc;
 import com.taobao.arthas.core.command.model.SystemPropertyModel;
 import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
 import com.taobao.arthas.core.grpc.observer.impl.ArthasStreamObserverImpl;
+import com.taobao.arthas.core.shell.session.SessionManager;
 import com.taobao.arthas.core.shell.system.impl.JobControllerImpl;
 import io.grpc.stub.StreamObserver;
 
@@ -15,16 +16,15 @@ import java.util.Map;
 
 public class SystemPropertyCommandService extends SystemPropertyGrpc.SystemPropertyImplBase{
 
-    private JobControllerImpl jobController;
+    private SessionManager sessionManager;
 
-
-    public SystemPropertyCommandService(JobControllerImpl jobController) {
-        this.jobController = jobController;
+    public SystemPropertyCommandService(SessionManager sessionManager) {
+        this.sessionManager = sessionManager;
     }
 
     @Override
     public void get(Empty empty, StreamObserver<StringValue> responseObserver){
-        ArthasStreamObserver<StringValue> arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver,jobController);
+        ArthasStreamObserver<StringValue> arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver, sessionManager);
         arthasStreamObserver.appendResult(new SystemPropertyModel(System.getProperties()));
         arthasStreamObserver.end();
     }
@@ -32,7 +32,7 @@ public class SystemPropertyCommandService extends SystemPropertyGrpc.SystemPrope
     @Override
     public void getByKey(StringKey request, StreamObserver<StringValue> responseObserver){
         String propertyName = request.getKey();
-        ArthasStreamObserver<StringValue> arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver,jobController);
+        ArthasStreamObserver<StringValue> arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver,sessionManager);
         // view the specified system property
         String value = System.getProperty(propertyName);
         if (value == null) {
@@ -55,7 +55,7 @@ public class SystemPropertyCommandService extends SystemPropertyGrpc.SystemPrope
             propertyName = entry.getKey();
             propertyValue = entry.getValue();
         }
-        ArthasStreamObserver<StringValue> arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver,jobController);
+        ArthasStreamObserver<StringValue> arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver,sessionManager);
         try {
             System.setProperty(propertyName, propertyValue);
             arthasStreamObserver.appendResult(new SystemPropertyModel(propertyName, System.getProperty(propertyName)));

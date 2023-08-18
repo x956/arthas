@@ -7,6 +7,7 @@ import com.taobao.arthas.core.grpc.service.SystemPropertyCommandService;
 import com.taobao.arthas.core.grpc.service.WatchCommandService;
 import com.taobao.arthas.core.shell.future.Future;
 import com.taobao.arthas.core.shell.handlers.Handler;
+import com.taobao.arthas.core.shell.session.SessionManager;
 import com.taobao.arthas.core.shell.system.impl.JobControllerImpl;
 import com.taobao.arthas.core.shell.term.Term;
 import com.taobao.arthas.core.shell.term.TermServer;
@@ -24,21 +25,12 @@ public class GrpcTermServer extends TermServer {
 //    private NettyWebsocketTtyBootstrap bootstrap;
     private int port;
     private Server grpcServer;
-
-    private final Instrumentation instrumentation;
-
-    private final JobControllerImpl jobController;
+    private final SessionManager sessionManager;
 
 
-
-    public GrpcTermServer(int port, Instrumentation instrumentation, JobControllerImpl jobController) {
-//        this.hostIp = hostIp;
+    public GrpcTermServer(int port, SessionManager sessionManager) {
         this.port = port;
-//        this.connectionTimeout = connectionTimeout;
-//        this.workerGroup = workerGroup;
-//        this.httpSessionManager = httpSessionManager;
-        this.instrumentation = instrumentation;
-        this.jobController = jobController;
+        this.sessionManager = sessionManager;
     }
 
     @Override
@@ -50,9 +42,9 @@ public class GrpcTermServer extends TermServer {
     public TermServer listen(Handler<Future<TermServer>> listenHandler) {
         try {
             grpcServer = ServerBuilder.forPort(port)
-                    .addService(new PwdCommandService(jobController))
-                    .addService(new SystemPropertyCommandService(jobController))
-                    .addService(new WatchCommandService(instrumentation, jobController))
+                    .addService(new PwdCommandService(sessionManager))
+                    .addService(new SystemPropertyCommandService(sessionManager))
+                    .addService(new WatchCommandService(sessionManager))
                     .build()
                     .start();
             logger.info("Server started, listening on " + port);

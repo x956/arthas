@@ -9,6 +9,8 @@ import com.taobao.arthas.core.distribution.ResultDistributor;
 import com.taobao.arthas.core.distribution.impl.GrpcResultDistributorImpl;
 import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
 import com.taobao.arthas.core.server.ArthasBootstrap;
+import com.taobao.arthas.core.shell.session.Session;
+import com.taobao.arthas.core.shell.session.SessionManager;
 import com.taobao.arthas.core.shell.system.ExecStatus;
 import com.taobao.arthas.core.shell.system.ProcessAware;
 import com.taobao.arthas.core.shell.system.impl.JobControllerImpl;
@@ -33,12 +35,18 @@ public class ArthasStreamObserverImpl<T> implements ArthasStreamObserver<T> {
 
     private final JobControllerImpl jobController;
 
+    private final SessionManager sessionManager;
+
+    private Session session;
+
     private ResultDistributor resultDistributor;
 
 
-    public ArthasStreamObserverImpl(StreamObserver<T> streamObserver, JobControllerImpl jobController){
+    public ArthasStreamObserverImpl(StreamObserver<T> streamObserver, SessionManager sessionManager){
         this.streamObserver = streamObserver;
-        this.jobController = jobController;
+        this.jobController = (JobControllerImpl) sessionManager.getJobController();
+        this.sessionManager = sessionManager;
+        this.session = sessionManager.createSession();
         this.jobId = jobController.generateGrpcJobId();
         if (resultDistributor == null) {
             resultDistributor = new GrpcResultDistributorImpl(this, ArthasBootstrap.getInstance().getGrpcResultViewResolver());
@@ -46,6 +54,7 @@ public class ArthasStreamObserverImpl<T> implements ArthasStreamObserver<T> {
         this.process = new GrpcProcess();
         this.process.setProcessStatus(ExecStatus.RUNNING);
     }
+
 
     @Override
     public void onNext(T value) {
@@ -66,6 +75,11 @@ public class ArthasStreamObserverImpl<T> implements ArthasStreamObserver<T> {
     @Override
     public AtomicInteger times() {
         return times;
+    }
+
+    @Override
+    public Session session() {
+        return this.session;
     }
 
     @Override

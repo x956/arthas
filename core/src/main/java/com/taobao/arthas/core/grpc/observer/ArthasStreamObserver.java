@@ -2,6 +2,7 @@ package com.taobao.arthas.core.grpc.observer;
 
 import com.taobao.arthas.core.advisor.AdviceListener;
 import com.taobao.arthas.core.command.model.ResultModel;
+import com.taobao.arthas.core.shell.session.Session;
 
 import java.lang.instrument.ClassFileTransformer;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -19,6 +20,7 @@ public interface ArthasStreamObserver<T>  {
     void appendResult(ResultModel result);
 
     AtomicInteger times();
+    Session session();
 
     void register(AdviceListener listener, ClassFileTransformer transformer);
 
