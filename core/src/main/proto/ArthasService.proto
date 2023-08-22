@@ -52,4 +52,5 @@ message WatchRequest {
   int64 listenerId = 14;
   bool verbose = 15;
   int32 maxNumOfMatchedClass = 16;
+  int64 jobId = 17;
 }
