@@ -33,6 +33,8 @@ public class WatchRequestModel {
 
     private long listenerId;
 
+    private long jobId;
+
     private boolean verbose;
 
     private int maxNumOfMatchedClass;
@@ -127,6 +129,7 @@ public class WatchRequestModel {
         }else {
             this.maxNumOfMatchedClass = watchRequest.getMaxNumOfMatchedClass();
         }
+        this.jobId = watchRequest.getJobId();
     }
 
 
@@ -269,5 +272,9 @@ public class WatchRequestModel {
 
     public void setMaxNumOfMatchedClass(int maxNumOfMatchedClass) {
         this.maxNumOfMatchedClass = maxNumOfMatchedClass;
+    }
+
+    public long getJobId() {
+        return jobId;
     }
 }

@@ -20,20 +20,22 @@ import com.taobao.arthas.core.server.ArthasBootstrap;
 import com.taobao.arthas.core.shell.session.Session;
 import com.taobao.arthas.core.shell.session.SessionManager;
 import com.taobao.arthas.core.util.LogUtil;
-import com.taobao.arthas.core.util.SearchUtils;
 import com.taobao.arthas.core.util.StringUtils;
 import com.taobao.arthas.core.util.affect.EnhancerAffect;
-import com.taobao.arthas.core.util.matcher.Matcher;
 import com.taobao.arthas.core.view.Ansi;
 import io.grpc.stub.StreamObserver;
 
 import java.lang.instrument.Instrumentation;
-
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 public class WatchCommandService extends WatchGrpc.WatchImplBase {
 
     private static final Logger logger = LoggerFactory.getLogger(WatchCommandService.class);
+
+    private final static Map<Long/*JOB_ID*/, ArthasStreamObserver> jobs
+            = new ConcurrentHashMap<Long, ArthasStreamObserver>();
 
     private WatchRequestModel watchRequestModel;
 
@@ -54,8 +56,20 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
         watchRequestModel = new WatchRequestModel(watchRequest);
         System.out.println(watchRequestModel.toString());
         System.out.println("参数初始化完成");
+        ArthasStreamObserverImpl<StringValue> stringValueArthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver, watchRequestModel, sessionManager);
         // arthasStreamObserver 传入到advisor中，实现异步传输数据
-        this.arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver, watchRequestModel, sessionManager);
+        if(jobs.containsKey(watchRequestModel.getJobId())){
+            arthasStreamObserver = jobs.get(watchRequestModel.getJobId());
+            WatchRpcAdviceListener listener = (WatchRpcAdviceListener) AdviceWeaver.listener(arthasStreamObserver.getListener().id());
+            watchRequestModel.setListenerId(listener.id());
+            arthasStreamObserver.setRequestModel(watchRequestModel);
+            listener.setArthasStreamObserver(arthasStreamObserver);
+            arthasStreamObserver.write("SUCCESS CHANGE!!!!!!!!!!!");
+            stringValueArthasStreamObserver.end(0,"修改成功!!!");
+        }else {
+            arthasStreamObserver = stringValueArthasStreamObserver;
+            jobs.put((long) arthasStreamObserver.getJobId(), arthasStreamObserver);
+        }
         // 创建watch任务
         WatchTask watchTask = new WatchTask();
         System.out.println("开始execute...");

@@ -35,6 +35,8 @@ public class ArthasStreamObserverImpl<T> implements ArthasStreamObserver<T> {
 
     private int jobId;
 
+    private boolean isChanged;
+
     private final JobControllerImpl jobController;
 
     private final SessionManager sessionManager;
@@ -135,30 +137,6 @@ public class ArthasStreamObserverImpl<T> implements ArthasStreamObserver<T> {
     }
 
 
-    public void setOnCancelHandler() {
-        ServerCallStreamObserver<T> observer = (ServerCallStreamObserver<T>) this.streamObserver;
-        observer.setOnCancelHandler(() -> {
-            this.end();
-        });
-    }
-
-
-    private synchronized boolean terminate(int exitCode, String message) {
-        boolean flag;
-        if (process.status() != ExecStatus.TERMINATED) {
-            //add status message
-            this.appendResult(new StatusModel(exitCode, message));
-            if (process != null) {
-                this.unregister();
-            }
-            flag = true;
-        } else {
-            flag = false;
-        }
-        this.onCompleted();
-        return flag;
-    }
-
     @Override
     public ArthasStreamObserver write(String msg) {
         StringValue result = StringValue.newBuilder().setValue(msg).build();
@@ -185,5 +163,39 @@ public class ArthasStreamObserverImpl<T> implements ArthasStreamObserver<T> {
     @Override
     public Object getRequestModel() {
         return requestModel;
+    }
+
+    @Override
+    public void setRequestModel(Object requestModel) {
+        this.requestModel = requestModel;
+    }
+
+    public void setOnCancelHandler() {
+        ServerCallStreamObserver<T> observer = (ServerCallStreamObserver<T>) this.streamObserver;
+        observer.setOnCancelHandler(() -> {
+            this.end();
+        });
+    }
+
+
+    private synchronized boolean terminate(int exitCode, String message) {
+        boolean flag;
+        if (process.status() != ExecStatus.TERMINATED) {
+            //add status message
+            this.appendResult(new StatusModel(exitCode, message));
+            if (process != null) {
+                this.unregister();
+            }
+            flag = true;
+        } else {
+            flag = false;
+        }
+        this.onCompleted();
+        return flag;
+    }
+
+
+    public AdviceListener getListener() {
+        return listener;
     }
 }

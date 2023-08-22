@@ -43,4 +43,8 @@ public interface ArthasStreamObserver<T>  {
     int getJobId();
 
     Object getRequestModel();
+
+    void setRequestModel(Object requestModel);
+
+    AdviceListener getListener();
 }

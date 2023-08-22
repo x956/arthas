@@ -33,6 +33,11 @@ public class WatchRpcAdviceListener extends RpcAdviceListenerAdapter {
         super.setVerbose(verbose);
     }
 
+    public void setArthasStreamObserver(ArthasStreamObserver arthasStreamObserver) {
+        this.arthasStreamObserver = arthasStreamObserver;
+        this.watchRequestModel = (WatchRequestModel) arthasStreamObserver.getRequestModel();
+    }
+
     private boolean isFinish() {
         return watchRequestModel.isFinish() || !watchRequestModel.isBefore() && !watchRequestModel.isException() && !watchRequestModel.isSuccess();
     }
@@ -77,7 +82,10 @@ public class WatchRpcAdviceListener extends RpcAdviceListenerAdapter {
     private void watching(Advice advice) {
         try {
             // 本次调用的耗时
-            System.out.println("************rpc watch advice开始正式执行,执行信息如下*****************");
+            System.out.println("************job:  "+ arthasStreamObserver.getJobId() + "  rpc watch advice开始正式执行,执行信息如下*****************");
+            System.out.println("listener ID: + " + arthasStreamObserver.getListener().id());
+            System.out.println("参数: \n" + watchRequestModel.toString());
+            System.out.println("###############执行完毕***************** \n\n");
             double cost = threadLocalWatch.costInMillis();
             boolean conditionResult = isConditionMet(watchRequestModel.getConditionExpress(), advice, cost);
             if (this.isVerbose()) {
