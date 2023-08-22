@@ -24,7 +24,7 @@ public class PwdCommandService extends PwdGrpc.PwdImplBase{
     @Override
     public void pwd(Empty empty, StreamObserver<StringValue> responseObserver){
         String path = new File("").getAbsolutePath();
-        ArthasStreamObserver<StringValue> arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver, sessionManager);
+        ArthasStreamObserver<StringValue> arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver, null, sessionManager);
         arthasStreamObserver.appendResult(new PwdModel(path));
         arthasStreamObserver.onCompleted();
     }

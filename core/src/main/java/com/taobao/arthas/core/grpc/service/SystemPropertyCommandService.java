@@ -24,7 +24,7 @@ public class SystemPropertyCommandService extends SystemPropertyGrpc.SystemPrope
 
     @Override
     public void get(Empty empty, StreamObserver<StringValue> responseObserver){
-        ArthasStreamObserver<StringValue> arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver, sessionManager);
+        ArthasStreamObserver<StringValue> arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver, null, sessionManager);
         arthasStreamObserver.appendResult(new SystemPropertyModel(System.getProperties()));
         arthasStreamObserver.end();
     }
@@ -32,7 +32,7 @@ public class SystemPropertyCommandService extends SystemPropertyGrpc.SystemPrope
     @Override
     public void getByKey(StringKey request, StreamObserver<StringValue> responseObserver){
         String propertyName = request.getKey();
-        ArthasStreamObserver<StringValue> arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver,sessionManager);
+        ArthasStreamObserver<StringValue> arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver,null, sessionManager);
         // view the specified system property
         String value = System.getProperty(propertyName);
         if (value == null) {
@@ -55,7 +55,7 @@ public class SystemPropertyCommandService extends SystemPropertyGrpc.SystemPrope
             propertyName = entry.getKey();
             propertyValue = entry.getValue();
         }
-        ArthasStreamObserver<StringValue> arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver,sessionManager);
+        ArthasStreamObserver<StringValue> arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver,null, sessionManager);
         try {
             System.setProperty(propertyName, propertyValue);
             arthasStreamObserver.appendResult(new SystemPropertyModel(propertyName, System.getProperty(propertyName)));

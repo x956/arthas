@@ -40,4 +40,7 @@ public interface ArthasStreamObserver<T>  {
      */
     void end(int status, String message);
 
+    int getJobId();
+
+    Object getRequestModel();
 }

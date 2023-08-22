@@ -14,6 +14,7 @@ import com.taobao.arthas.core.shell.session.SessionManager;
 import com.taobao.arthas.core.shell.system.ExecStatus;
 import com.taobao.arthas.core.shell.system.ProcessAware;
 import com.taobao.arthas.core.shell.system.impl.JobControllerImpl;
+import io.grpc.stub.ServerCallStreamObserver;
 import io.grpc.stub.StreamObserver;
 
 import java.lang.instrument.ClassFileTransformer;
@@ -27,6 +28,7 @@ public class ArthasStreamObserverImpl<T> implements ArthasStreamObserver<T> {
 
     private GrpcProcess process;
 
+    private Object requestModel;
     private AdviceListener listener = null;
 
     private ClassFileTransformer transformer;
@@ -42,7 +44,7 @@ public class ArthasStreamObserverImpl<T> implements ArthasStreamObserver<T> {
     private ResultDistributor resultDistributor;
 
 
-    public ArthasStreamObserverImpl(StreamObserver<T> streamObserver, SessionManager sessionManager){
+    public ArthasStreamObserverImpl(StreamObserver<T> streamObserver, Object requestModel, SessionManager sessionManager){
         this.streamObserver = streamObserver;
         this.jobController = (JobControllerImpl) sessionManager.getJobController();
         this.sessionManager = sessionManager;
@@ -53,6 +55,10 @@ public class ArthasStreamObserverImpl<T> implements ArthasStreamObserver<T> {
         }
         this.process = new GrpcProcess();
         this.process.setProcessStatus(ExecStatus.RUNNING);
+        // 请求参数
+        this.requestModel = requestModel;
+        // 配置客户端取消事件
+        this.setOnCancelHandler();
     }
 
 
@@ -129,6 +135,14 @@ public class ArthasStreamObserverImpl<T> implements ArthasStreamObserver<T> {
     }
 
 
+    public void setOnCancelHandler() {
+        ServerCallStreamObserver<T> observer = (ServerCallStreamObserver<T>) this.streamObserver;
+        observer.setOnCancelHandler(() -> {
+            this.end();
+        });
+    }
+
+
     private synchronized boolean terminate(int exitCode, String message) {
         boolean flag;
         if (process.status() != ExecStatus.TERMINATED) {
@@ -162,5 +176,14 @@ public class ArthasStreamObserverImpl<T> implements ArthasStreamObserver<T> {
         if (resultDistributor != null) {
             resultDistributor.appendResult(result);
         }
+    }
+    @Override
+    public int getJobId() {
+        return jobId;
+    }
+
+    @Override
+    public Object getRequestModel() {
+        return requestModel;
     }
 }

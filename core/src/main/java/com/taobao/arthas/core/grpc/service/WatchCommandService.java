@@ -12,6 +12,7 @@ import com.taobao.arthas.core.advisor.Enhancer;
 import com.taobao.arthas.core.advisor.InvokeTraceable;
 import com.taobao.arthas.core.command.model.EnhancerModel;
 import com.taobao.arthas.core.command.monitor200.AbstractTraceAdviceListener;
+import com.taobao.arthas.core.grpc.model.WatchRequestModel;
 import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
 import com.taobao.arthas.core.grpc.observer.impl.ArthasStreamObserverImpl;
 import com.taobao.arthas.core.grpc.service.advisor.WatchRpcAdviceListener;
@@ -27,85 +28,38 @@ import com.taobao.arthas.core.view.Ansi;
 import io.grpc.stub.StreamObserver;
 
 import java.lang.instrument.Instrumentation;
-import java.util.Collections;
-import java.util.List;
+
 
 
 public class WatchCommandService extends WatchGrpc.WatchImplBase {
 
     private static final Logger logger = LoggerFactory.getLogger(WatchCommandService.class);
 
-    private WatchRequest watchRequest;
+    private WatchRequestModel watchRequestModel;
 
     private ArthasStreamObserver arthasStreamObserver;
-    private String classPattern;
-    private String methodPattern;
-    private String express;
-    private String conditionExpress;
-    private boolean isBefore = false;
-    private boolean isFinish = false;
-    private boolean isException = false;
-    private boolean isSuccess = false;
-    private Integer expand = 1;
-    private Integer sizeLimit = 10 * 1024 * 1024;
-    private boolean isRegEx = false;
-    private int numberOfLimit = 100;
 
-    protected static final List<String> EMPTY = Collections.emptyList();
-    public static final String[] EXPRESS_EXAMPLES = { "params", "returnObj", "throwExp", "target", "clazz", "method",
-            "{params,returnObj}", "params[0]" };
-    private String excludeClassPattern;
-
-    private Matcher classNameMatcher;
-    private Matcher classNameExcludeMatcher;
-    private Matcher methodNameMatcher;
-
-    private long listenerId;
-
-    private boolean verbose;
-
-    private int maxNumOfMatchedClass;
     private SessionManager sessionManager;
 
     public WatchCommandService(SessionManager sessionManager) {
         this.sessionManager = sessionManager;
     }
 
-    @Override
-    public String toString() {
-        return "WatchCommandService{" +
-                "classPattern='" + classPattern + '\'' +
-                ", methodPattern='" + methodPattern + '\'' +
-                ", express='" + express + '\'' +
-                ", conditionExpress='" + conditionExpress + '\'' +
-                ", isBefore=" + isBefore +
-                ", isFinish=" + isFinish +
-                ", isException=" + isException +
-                ", isSuccess=" + isSuccess +
-                ", expand=" + expand +
-                ", sizeLimit=" + sizeLimit +
-                ", isRegEx=" + isRegEx +
-                ", numberOfLimit=" + numberOfLimit +
-                ", excludeClassPattern='" + excludeClassPattern + '\'' +
-                ", listenerId=" + listenerId +
-                ", verbose=" + verbose +
-                ", maxNumOfMatchedClass=" + maxNumOfMatchedClass +
-                '}';
-    }
 
     @Override
     public void watch(WatchRequest watchRequest, StreamObserver<StringValue> responseObserver){
         // 解析watchRequest 参数
         // 需要参照EnhancerCommand.process写
-        parseRequestParams(watchRequest);
-        System.out.println(this.toString());
-
+//        parseRequestParams(watchRequest);
+        watchRequestModel = new WatchRequestModel(watchRequest);
+        System.out.println(watchRequestModel.toString());
         System.out.println("参数初始化完成");
         // arthasStreamObserver 传入到advisor中，实现异步传输数据
-        ArthasStreamObserver<StringValue> arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver, sessionManager);
-        this.arthasStreamObserver = arthasStreamObserver;
+        this.arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver, watchRequestModel, sessionManager);
+        // 创建watch任务
         WatchTask watchTask = new WatchTask();
         System.out.println("开始execute...");
+        // 执行watch任务
         ArthasBootstrap.getInstance().execute(watchTask);
         System.out.println("enhance 激活成功,开始运行...");
     }
@@ -123,86 +77,21 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
         }
     }
 
-    private Matcher getClassNameMatcher() {
-        if (classNameMatcher == null) {
-            classNameMatcher = SearchUtils.classNameMatcher(getClassPattern(), isRegEx());
-        }
-        return classNameMatcher;
-    }
-
-    public Matcher getMethodNameMatcher() {
-        if (methodNameMatcher == null) {
-            methodNameMatcher = SearchUtils.classNameMatcher(getMethodPattern(), isRegEx());
-        }
-        return methodNameMatcher;
-    }
-    public Matcher getClassNameExcludeMatcher() {
-        if (classNameExcludeMatcher == null && getExcludeClassPattern() != null) {
-            classNameExcludeMatcher = SearchUtils.classNameMatcher(getExcludeClassPattern(), isRegEx());
-        }
-        return classNameExcludeMatcher;
-    }
-
-    public void parseRequestParams(WatchRequest watchRequest){
-        this.watchRequest = watchRequest;
-        this.classPattern = watchRequest.getClassPattern();
-        this.methodPattern = watchRequest.getMethodPattern();
-        if(StringUtils.isEmpty(watchRequest.getExpress())){
-            this.express = "{params, target, returnObj}";
-        }else {
-            this.express = watchRequest.getExpress();
-        }
-        this.conditionExpress = watchRequest.getConditionExpress();
-        this.isBefore = watchRequest.getIsBefore();
-        this.isFinish = watchRequest.getIsFinish();
-        this.isException = watchRequest.getIsException();
-        this.isSuccess = watchRequest.getIsSuccess();
-        if (!watchRequest.getIsBefore() && !watchRequest.getIsFinish() && !watchRequest.getIsException() && !watchRequest.getIsSuccess()) {
-            this.isFinish = true;
-        }
-        if (watchRequest.getExpand() == 0) {
-            this.expand = 1;
-        } else {
-            this.expand = watchRequest.getExpand();
-        }
-        if (watchRequest.getSizeLimit() == 0) {
-            this.sizeLimit = 10 * 1024 * 1024;
-        } else {
-            this.sizeLimit = watchRequest.getSizeLimit();
-        }
-        this.isRegEx = watchRequest.getIsRegEx();
-        if (watchRequest.getNumberOfLimit() == 0) {
-            this.numberOfLimit = 100;
-        } else {
-            this.numberOfLimit = watchRequest.getNumberOfLimit();
-        }
-        if(watchRequest.getExcludeClassPattern().equals("")){
-            this.excludeClassPattern = null;
-        }else {
-            this.excludeClassPattern = watchRequest.getExcludeClassPattern();
-        }
-        this.listenerId = watchRequest.getListenerId();
-        this.verbose = watchRequest.getVerbose();
-        if(watchRequest.getMaxNumOfMatchedClass() == 0){
-            this.maxNumOfMatchedClass = 50;
-        }else {
-            this.maxNumOfMatchedClass = watchRequest.getMaxNumOfMatchedClass();
-        }
-    }
 
 
-    AdviceListener getAdviceListenerWithId(WatchRequest watchRequest, ArthasStreamObserver arthasStreamObserver) {
-        if (watchRequest.getListenerId()!= 0) {
-            AdviceListener listener = AdviceWeaver.listener(watchRequest.getListenerId());
+    AdviceListener getAdviceListenerWithId(WatchRequestModel watchRequestModel, ArthasStreamObserver arthasStreamObserver) {
+        if (watchRequestModel.getListenerId()!= 0) {
+            AdviceListener listener = AdviceWeaver.listener(watchRequestModel.getListenerId());
             if (listener != null) {
                 return listener;
             }
         }
-        return new WatchRpcAdviceListener(this, arthasStreamObserver, GlobalOptions.verbose || watchRequest.getVerbose());
+        return new WatchRpcAdviceListener(arthasStreamObserver, GlobalOptions.verbose || watchRequestModel.isVerbose());
     }
 
     void enhance(ArthasStreamObserver arthasStreamObserver) {
         Session session = arthasStreamObserver.session();
+
         if (!session.tryLock()) {
             String msg = "someone else is enhancing classes, pls. wait.";
             arthasStreamObserver.appendResult(new EnhancerModel(null, false, msg));
@@ -213,7 +102,7 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
         int lock = session.getLock();
         try {
             Instrumentation inst = session.getInstrumentation();
-            AdviceListener listener = getAdviceListenerWithId(watchRequest, arthasStreamObserver);
+            AdviceListener listener = getAdviceListenerWithId(watchRequestModel, arthasStreamObserver);
             if (listener == null) {
                 logger.error("advice listener is null");
                 String msg = "advice listener is null, check arthas log";
@@ -226,10 +115,10 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
                 skipJDKTrace = ((AbstractTraceAdviceListener) listener).getCommand().isSkipJDKTrace();
             }
 
-            Enhancer enhancer = new Enhancer(listener, listener instanceof InvokeTraceable, skipJDKTrace, getClassNameMatcher(), getClassNameExcludeMatcher(), getMethodNameMatcher());
+            Enhancer enhancer = new Enhancer(listener, listener instanceof InvokeTraceable, skipJDKTrace, watchRequestModel.getClassNameMatcher(), watchRequestModel.getClassNameExcludeMatcher(), watchRequestModel.getMethodNameMatcher());
             // 注册通知监听器
             arthasStreamObserver.register(listener, enhancer);
-            effect = enhancer.enhance(inst, this.maxNumOfMatchedClass);
+            effect = enhancer.enhance(inst, watchRequestModel.getMaxNumOfMatchedClass());
             if (effect.getThrowable() != null) {
                 String msg = "error happens when enhancing class: "+effect.getThrowable().getMessage();
                 arthasStreamObserver.appendResult(new EnhancerModel(effect, false, msg));
@@ -279,144 +168,4 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
         }
     }
 
-
-    public String getClassPattern() {
-        return classPattern;
-    }
-
-    public void setClassPattern(String classPattern) {
-        this.classPattern = classPattern;
-    }
-
-    public String getMethodPattern() {
-        return methodPattern;
-    }
-
-    public void setMethodPattern(String methodPattern) {
-        this.methodPattern = methodPattern;
-    }
-
-    public String getExpress() {
-        return express;
-    }
-
-    public void setExpress(String express) {
-        this.express = express;
-    }
-
-    public String getConditionExpress() {
-        return conditionExpress;
-    }
-
-    public void setConditionExpress(String conditionExpress) {
-        this.conditionExpress = conditionExpress;
-    }
-
-    public boolean isBefore() {
-        return isBefore;
-    }
-
-    public void setBefore(boolean before) {
-        isBefore = before;
-    }
-
-    public boolean isFinish() {
-        return isFinish;
-    }
-
-    public void setFinish(boolean finish) {
-        isFinish = finish;
-    }
-
-    public boolean isException() {
-        return isException;
-    }
-
-    public void setException(boolean exception) {
-        isException = exception;
-    }
-
-    public boolean isSuccess() {
-        return isSuccess;
-    }
-
-    public void setSuccess(boolean success) {
-        isSuccess = success;
-    }
-
-    public Integer getExpand() {
-        return expand;
-    }
-
-    public void setExpand(Integer expand) {
-        this.expand = expand;
-    }
-
-    public Integer getSizeLimit() {
-        return sizeLimit;
-    }
-
-    public void setSizeLimit(Integer sizeLimit) {
-        this.sizeLimit = sizeLimit;
-    }
-
-    public boolean isRegEx() {
-        return isRegEx;
-    }
-
-    public void setRegEx(boolean regEx) {
-        isRegEx = regEx;
-    }
-
-    public int getNumberOfLimit() {
-        return numberOfLimit;
-    }
-
-    public void setNumberOfLimit(int numberOfLimit) {
-        this.numberOfLimit = numberOfLimit;
-    }
-
-    public String getExcludeClassPattern() {
-        return excludeClassPattern;
-    }
-
-    public void setExcludeClassPattern(String excludeClassPattern) {
-        this.excludeClassPattern = excludeClassPattern;
-    }
-
-    public void setClassNameMatcher(Matcher classNameMatcher) {
-        this.classNameMatcher = classNameMatcher;
-    }
-
-    public void setClassNameExcludeMatcher(Matcher classNameExcludeMatcher) {
-        this.classNameExcludeMatcher = classNameExcludeMatcher;
-    }
-
-    public void setMethodNameMatcher(Matcher methodNameMatcher) {
-        this.methodNameMatcher = methodNameMatcher;
-    }
-
-    public long getListenerId() {
-        return listenerId;
-    }
-
-    public void setListenerId(long listenerId) {
-        this.listenerId = listenerId;
-    }
-
-    public boolean isVerbose() {
-        return verbose;
-    }
-
-    public void setVerbose(boolean verbose) {
-        this.verbose = verbose;
-    }
-
-    public int getMaxNumOfMatchedClass() {
-        return maxNumOfMatchedClass;
-    }
-
-    public void setMaxNumOfMatchedClass(int maxNumOfMatchedClass) {
-        this.maxNumOfMatchedClass = maxNumOfMatchedClass;
-    }
 }

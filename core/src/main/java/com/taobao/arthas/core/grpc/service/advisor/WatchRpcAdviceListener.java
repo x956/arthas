@@ -7,6 +7,7 @@ import com.taobao.arthas.core.advisor.Advice;
 import com.taobao.arthas.core.advisor.ArthasMethod;
 import com.taobao.arthas.core.command.model.ObjectVO;
 import com.taobao.arthas.core.command.model.WatchModel;
+import com.taobao.arthas.core.grpc.model.WatchRequestModel;
 import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
 import com.taobao.arthas.core.grpc.service.WatchCommandService;
 import com.taobao.arthas.core.util.LogUtil;
@@ -22,18 +23,18 @@ public class WatchRpcAdviceListener extends RpcAdviceListenerAdapter {
     private static final Logger logger = LoggerFactory.getLogger(WatchRpcAdviceListener.class);
     private final ThreadLocalWatch threadLocalWatch = new ThreadLocalWatch();
 
-    private WatchCommandService watchCommandService;
+    private WatchRequestModel watchRequestModel;
 
     private ArthasStreamObserver arthasStreamObserver;
 
-    public WatchRpcAdviceListener(WatchCommandService watchCommandService, ArthasStreamObserver arthasStreamObserver, boolean verbose) {
-        this.watchCommandService = watchCommandService;
+    public WatchRpcAdviceListener(ArthasStreamObserver arthasStreamObserver, boolean verbose) {
         this.arthasStreamObserver = arthasStreamObserver;
+        this.watchRequestModel = (WatchRequestModel) arthasStreamObserver.getRequestModel();
         super.setVerbose(verbose);
     }
 
     private boolean isFinish() {
-        return watchCommandService.isFinish() || !watchCommandService.isBefore() && !watchCommandService.isException() && !watchCommandService.isSuccess();
+        return watchRequestModel.isFinish() || !watchRequestModel.isBefore() && !watchRequestModel.isException() && !watchRequestModel.isSuccess();
     }
 
     @Override
@@ -41,7 +42,7 @@ public class WatchRpcAdviceListener extends RpcAdviceListenerAdapter {
             throws Throwable {
         // 开始计算本次方法调用耗时
         threadLocalWatch.start();
-        if (watchCommandService.isBefore()) {
+        if (watchRequestModel.isBefore()) {
             watching(Advice.newForBefore(loader, clazz, method, target, args));
         }
     }
@@ -50,7 +51,7 @@ public class WatchRpcAdviceListener extends RpcAdviceListenerAdapter {
     public void afterReturning(ClassLoader loader, Class<?> clazz, ArthasMethod method, Object target, Object[] args,
                                Object returnObject) throws Throwable {
         Advice advice = Advice.newForAfterReturning(loader, clazz, method, target, args, returnObject);
-        if (watchCommandService.isSuccess()) {
+        if (watchRequestModel.isSuccess()) {
             watching(advice);
         }
         finishing(advice);
@@ -60,7 +61,7 @@ public class WatchRpcAdviceListener extends RpcAdviceListenerAdapter {
     public void afterThrowing(ClassLoader loader, Class<?> clazz, ArthasMethod method, Object target, Object[] args,
                               Throwable throwable) {
         Advice advice = Advice.newForAfterThrowing(loader, clazz, method, target, args, throwable);
-        if (watchCommandService.isException()) {
+        if (watchRequestModel.isException()) {
             watching(advice);
         }
         finishing(advice);
@@ -76,20 +77,20 @@ public class WatchRpcAdviceListener extends RpcAdviceListenerAdapter {
     private void watching(Advice advice) {
         try {
             // 本次调用的耗时
-            System.out.println("rpc watch advice开始正式执行");
+            System.out.println("************rpc watch advice开始正式执行,执行信息如下*****************");
             double cost = threadLocalWatch.costInMillis();
-            boolean conditionResult = isConditionMet(watchCommandService.getConditionExpress(), advice, cost);
+            boolean conditionResult = isConditionMet(watchRequestModel.getConditionExpress(), advice, cost);
             if (this.isVerbose()) {
-                arthasStreamObserver.write("Condition express: " + watchCommandService.getConditionExpress() + " , result: " + conditionResult + "\n");
+                arthasStreamObserver.write("Condition express: " + watchRequestModel.getConditionExpress() + " , result: " + conditionResult + "\n");
             }
             if (conditionResult) {
-                Object value = getExpressionResult(watchCommandService.getExpress(), advice, cost);
+                Object value = getExpressionResult(watchRequestModel.getExpress(), advice, cost);
 
                 WatchModel model = new WatchModel();
                 model.setTs(new Date());
                 model.setCost(cost);
-                model.setValue(new ObjectVO(value, watchCommandService.getExpand()));
-                model.setSizeLimit(watchCommandService.getSizeLimit());
+                model.setValue(new ObjectVO(value, watchRequestModel.getExpand()));
+                model.setSizeLimit(watchRequestModel.getSizeLimit());
                 model.setClassName(advice.getClazz().getName());
                 model.setMethodName(advice.getMethod().getName());
                 if (advice.isBefore()) {
@@ -101,14 +102,14 @@ public class WatchRpcAdviceListener extends RpcAdviceListenerAdapter {
                 }
                 arthasStreamObserver.appendResult(model);
                 arthasStreamObserver.times().incrementAndGet();
-                if (isLimitExceeded(watchCommandService.getNumberOfLimit(), arthasStreamObserver.times().get())) {
-                    abortProcess(arthasStreamObserver, watchCommandService.getNumberOfLimit());
+                if (isLimitExceeded(watchRequestModel.getNumberOfLimit(), arthasStreamObserver.times().get())) {
+                    abortProcess(arthasStreamObserver, watchRequestModel.getNumberOfLimit());
                 }
             }
         } catch (Throwable e) {
             logger.warn("watch failed.", e);
-            arthasStreamObserver.end(-1, "watch failed, condition is: " + watchCommandService.getConditionExpress() + ", express is: "
-                    + watchCommandService.getExpress() + ", " + e.getMessage() + ", visit " + LogUtil.loggingFile()
+            arthasStreamObserver.end(-1, "watch failed, condition is: " + watchRequestModel.getConditionExpress() + ", express is: "
+                    + watchRequestModel.getExpress() + ", " + e.getMessage() + ", visit " + LogUtil.loggingFile()
                     + " for more details.");
         }
     }
