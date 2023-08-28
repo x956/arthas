@@ -45,8 +45,8 @@ import com.taobao.middleware.cli.annotations.Summary;
  */
 @Name("arthas-boot")
 @Summary("Bootstrap Arthas")
-@Description("EXAMPLES:\n" + "  java -jar arthas-boot.jar <pid>\n" + "  java -jar arthas-boot.jar --target-ip 0.0.0.0\n"
-                + "  java -jar arthas-boot.jar --telnet-port 9999 --http-port -1 --grpc-port 10000\n"
+@Description("EXAMPLES:\n" + "  java -jar arthas-boot.jar <pid>\n"
+                + "  java -jar arthas-boot.jar --telnet-port 9999 --http-port -1\n"
                 + "  java -jar arthas-boot.jar --username admin --password <password>\n"
                 + "  java -jar arthas-boot.jar --tunnel-server 'ws://192.168.10.11:7777/ws' --app-name demoapp\n"
                 + "  java -jar arthas-boot.jar --tunnel-server 'ws://192.168.10.11:7777/ws' --agent-id bvDOe8XbTM2pQWjF4cfw\n"
@@ -190,12 +190,6 @@ public class Bootstrap {
     @Description("The target jvm listen http port, default 8563")
     public void setHttpPort(int httpPort) {
         this.httpPort = httpPort;
-    }
-
-    @Option(longName = "grpc-port")
-    @Description("The target jvm listen grpc port, default 8566")
-    public void setGrpcPort(int grpcPort) {
-        this.grpcPort = grpcPort;
     }
 
     @Option(longName = "session-timeout")
