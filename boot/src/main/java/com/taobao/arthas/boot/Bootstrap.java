@@ -192,6 +192,11 @@ public class Bootstrap {
         this.httpPort = httpPort;
     }
 
+    @Option(longName = "grpc-port")
+    @Description("The target jvm listen grpc port, default 8566")
+    public void setGrpcPort(int grpcPort) {
+        this.grpcPort = grpcPort;
+    }
     @Option(longName = "session-timeout")
     @Description("The session timeout seconds, default 1800 (30min)")
     public void setSessionTimeout(Long sessionTimeout) {
