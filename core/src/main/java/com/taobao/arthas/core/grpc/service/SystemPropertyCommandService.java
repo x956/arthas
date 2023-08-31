@@ -1,10 +1,7 @@
 package com.taobao.arthas.core.grpc.service;
 
 import com.google.protobuf.Empty;
-import com.taobao.arthas.core.AutoGrpc.Properties;
-import com.taobao.arthas.core.AutoGrpc.StringKey;
-import com.taobao.arthas.core.AutoGrpc.StringValue;
-import com.taobao.arthas.core.AutoGrpc.SystemPropertyGrpc;
+import com.taobao.arthas.core.AutoGrpc.*;
 import com.taobao.arthas.core.command.model.SystemPropertyModel;
 import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
 import com.taobao.arthas.core.grpc.observer.impl.ArthasStreamObserverImpl;
@@ -23,16 +20,16 @@ public class SystemPropertyCommandService extends SystemPropertyGrpc.SystemPrope
     }
 
     @Override
-    public void get(Empty empty, StreamObserver<StringValue> responseObserver){
-        ArthasStreamObserver<StringValue> arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver, null, sessionManager);
+    public void get(Empty empty, StreamObserver<ResponseBody> responseObserver){
+        ArthasStreamObserver<ResponseBody> arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver, null, sessionManager);
         arthasStreamObserver.appendResult(new SystemPropertyModel(System.getProperties()));
         arthasStreamObserver.end();
     }
 
     @Override
-    public void getByKey(StringKey request, StreamObserver<StringValue> responseObserver){
+    public void getByKey(StringKey request, StreamObserver<ResponseBody> responseObserver){
         String propertyName = request.getKey();
-        ArthasStreamObserver<StringValue> arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver,null, sessionManager);
+        ArthasStreamObserver<ResponseBody> arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver,null, sessionManager);
         // view the specified system property
         String value = System.getProperty(propertyName);
         if (value == null) {
@@ -45,7 +42,7 @@ public class SystemPropertyCommandService extends SystemPropertyGrpc.SystemPrope
     }
 
     @Override
-    public void update(Properties request, StreamObserver<StringValue> responseObserver){
+    public void update(Properties request, StreamObserver<ResponseBody> responseObserver){
         // get properties from client
         Map<String, String> properties = request.getPropertiesMap();
         String propertyName = "";
@@ -55,7 +52,7 @@ public class SystemPropertyCommandService extends SystemPropertyGrpc.SystemPrope
             propertyName = entry.getKey();
             propertyValue = entry.getValue();
         }
-        ArthasStreamObserver<StringValue> arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver,null, sessionManager);
+        ArthasStreamObserver<ResponseBody> arthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver,null, sessionManager);
         try {
             System.setProperty(propertyName, propertyValue);
             arthasStreamObserver.appendResult(new SystemPropertyModel(propertyName, System.getProperty(propertyName)));

@@ -1,6 +1,7 @@
 package com.taobao.arthas.core.grpc.service.advisor;
 
 import com.taobao.arthas.core.advisor.AdviceListenerAdapter;
+import com.taobao.arthas.core.command.model.MessageModel;
 import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
 
 public abstract class RpcAdviceListenerAdapter extends AdviceListenerAdapter {
@@ -12,8 +13,9 @@ public abstract class RpcAdviceListenerAdapter extends AdviceListenerAdapter {
      * @param limit   the limit to be printed
      */
     protected void abortProcess(ArthasStreamObserver arthasStreamObserver, int limit) {
-        arthasStreamObserver.write("Command execution times exceed limit: " + limit
-                + ", so command will exit. You can set it with -n option.\n");
+        String msg = "Command execution times exceed limit: " + limit
+                + ", so command will exit. You can set it with -n option.\n";
+//        arthasStreamObserver.appendResult(new MessageModel(msg));
         arthasStreamObserver.end();
     }
 }

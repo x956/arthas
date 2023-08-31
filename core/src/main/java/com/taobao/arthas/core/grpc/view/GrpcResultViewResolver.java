@@ -37,7 +37,7 @@ public class GrpcResultViewResolver {
             //basic1000
             registerView(GrpcStatusView.class);
 //            registerView(VersionView.class);
-//            registerView(MessageView.class);
+            registerView(GrpcMessageView.class);
 //            registerView(HelpView.class);
             //registerView(HistoryView.class);
 //            registerView(EchoView.class);

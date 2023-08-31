@@ -1,5 +1,8 @@
 package com.taobao.arthas.core.grpc.view;
 
+import com.google.protobuf.Any;
+import com.taobao.arthas.core.AutoGrpc.ResponseBody;
+import com.taobao.arthas.core.AutoGrpc.WatchResponse;
 import com.taobao.arthas.core.command.model.ObjectVO;
 import com.taobao.arthas.core.command.model.WatchModel;
 import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
@@ -19,7 +22,46 @@ public class GrpcWatchView extends GrpcResultView<WatchModel> {
         ObjectVO objectVO = model.getValue();
         String result = StringUtils.objectToString(
                 objectVO.needExpand() ? new ObjectView(model.getSizeLimit(), objectVO).draw() : objectVO.getObject());
-        arthasStreamObserver.write("method=" + model.getClassName() + "." + model.getMethodName() + " location=" + model.getAccessPoint() + "\n");
-        arthasStreamObserver.write("ts=" + DateUtils.formatDate(model.getTs()) + "; [cost=" + model.getCost() + "ms] result=" + result + "\n");
+        WatchResponse watchResponse = WatchResponse.newBuilder()
+                .setJobId(model.getJobId())
+                .setAccessPoint(model.getAccessPoint())
+                .setClassName(model.getClassName())
+                .setCost(model.getCost())
+                .setMethodName(model.getMethodName())
+                .setSizeLimit(model.getSizeLimit())
+                .setTs(DateUtils.formatDate(model.getTs()))
+                .setType(model.getType())
+                .setValue(result)
+                .build();
+        Any anyMessage = Any.pack(watchResponse);
+        ResponseBody responseBody  = ResponseBody.newBuilder()
+                .setSessionId(arthasStreamObserver.session().getSessionId())
+                .setStatusCode(0)
+                .setMessage("SUCCEEDED")
+                .setBody(anyMessage)
+                .build();
+        arthasStreamObserver.onNext(responseBody);
+
+//        Map<String,Object> watchResults = new HashMap<>();
+//        watchResults.put("accessPoint",model.getAccessPoint());
+//        watchResults.put("className", model.getClassName());
+//        watchResults.put("cost", model.getCost());
+//        watchResults.put("jobId", model.getJobId());
+//        watchResults.put("methodName", model.getMethodName());
+//        watchResults.put("sizeLimit", model.getSizeLimit());
+//        watchResults.put("ts",DateUtils.formatDate(model.getTs()));
+//        watchResults.put("type", model.getType());
+//        watchResults.put("value", result);
+//
+//        Map<String,Object> resultMap = new HashMap<>();
+//        resultMap.put("body",watchResults);
+//        resultMap.put("consumerId","");
+//        resultMap.put("requestId", "");
+//        resultMap.put("sessionId", arthasStreamObserver.session().getSessionId());
+//        resultMap.put("state","SUCCEEDED");
+//        String JsonResult = JSON.toJSONString(resultMap);
+//        arthasStreamObserver.write(JsonResult);
+//        arthasStreamObserver.write("method=" + model.getClassName() + "." + model.getMethodName() + " location=" + model.getAccessPoint() + "\n");
+//        arthasStreamObserver.write("ts=" + DateUtils.formatDate(model.getTs()) + "; [cost=" + model.getCost() + "ms] result=" + result + "\n");
     }
 }

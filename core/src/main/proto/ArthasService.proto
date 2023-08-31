@@ -10,17 +10,17 @@ import "google/protobuf/any.proto";
 package io.grpc.api;
 
 service SystemProperty {
-  rpc get(google.protobuf.Empty) returns (stream StringValue);
-  rpc getByKey(StringKey) returns (stream StringValue);
-  rpc update(Properties) returns (stream StringValue);
+  rpc get(google.protobuf.Empty) returns (ResponseBody);
+  rpc getByKey(StringKey) returns (ResponseBody);
+  rpc update(Properties) returns (ResponseBody);
 }
 
 service Pwd{
-  rpc pwd(google.protobuf.Empty) returns (stream StringValue);
+  rpc pwd(google.protobuf.Empty) returns (ResponseBody);
 }
 
 service Watch{
-  rpc watch(WatchRequest) returns (stream StringValue);
+  rpc watch(WatchRequest) returns (stream ResponseBody);
 }
 
 message StringKey {
@@ -53,4 +53,32 @@ message WatchRequest {
   bool verbose = 15;
   int32 maxNumOfMatchedClass = 16;
   int64 jobId = 17;
+}
+
+
+
+message SimpleResponse{
+  int32 jobId = 1;
+  string jobStatus = 2;
+  string type = 3;
+  map<string, string> results = 4;
+}
+
+message WatchResponse {
+  int32 jobId = 1;
+  string ts = 2;
+  double cost = 3;
+  string value = 4;
+  int32 sizeLimit = 5;
+  string className = 6;
+  string methodName = 7;
+  string accessPoint = 8;
+  string type = 9;
+}
+
+message ResponseBody {
+  string sessionId = 1;
+  int32 statusCode = 2;
+  string message  = 3;
+  google.protobuf.Any body = 4;
 }

@@ -5,6 +5,7 @@ import com.alibaba.arthas.deps.org.slf4j.LoggerFactory;
 import com.taobao.arthas.core.advisor.AccessPoint;
 import com.taobao.arthas.core.advisor.Advice;
 import com.taobao.arthas.core.advisor.ArthasMethod;
+import com.taobao.arthas.core.command.model.MessageModel;
 import com.taobao.arthas.core.command.model.ObjectVO;
 import com.taobao.arthas.core.command.model.WatchModel;
 import com.taobao.arthas.core.grpc.model.WatchRequestModel;
@@ -89,7 +90,8 @@ public class WatchRpcAdviceListener extends RpcAdviceListenerAdapter {
             double cost = threadLocalWatch.costInMillis();
             boolean conditionResult = isConditionMet(watchRequestModel.getConditionExpress(), advice, cost);
             if (this.isVerbose()) {
-                arthasStreamObserver.write("Condition express: " + watchRequestModel.getConditionExpress() + " , result: " + conditionResult + "\n");
+                String msg = "Condition express: " + watchRequestModel.getConditionExpress() + " , result: " + conditionResult + "\n";
+//                arthasStreamObserver.appendResult(new MessageModel(msg));
             }
             if (conditionResult) {
                 Object value = getExpressionResult(watchRequestModel.getExpress(), advice, cost);

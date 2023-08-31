@@ -2,6 +2,7 @@ package com.taobao.arthas.core.grpc.service;
 
 import com.alibaba.arthas.deps.org.slf4j.Logger;
 import com.alibaba.arthas.deps.org.slf4j.LoggerFactory;
+import com.taobao.arthas.core.AutoGrpc.ResponseBody;
 import com.taobao.arthas.core.AutoGrpc.StringValue;
 import com.taobao.arthas.core.AutoGrpc.WatchGrpc;
 import com.taobao.arthas.core.AutoGrpc.WatchRequest;
@@ -11,6 +12,7 @@ import com.taobao.arthas.core.advisor.AdviceWeaver;
 import com.taobao.arthas.core.advisor.Enhancer;
 import com.taobao.arthas.core.advisor.InvokeTraceable;
 import com.taobao.arthas.core.command.model.EnhancerModel;
+import com.taobao.arthas.core.command.model.MessageModel;
 import com.taobao.arthas.core.command.monitor200.AbstractTraceAdviceListener;
 import com.taobao.arthas.core.grpc.model.WatchRequestModel;
 import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
@@ -49,14 +51,14 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
 
 
     @Override
-    public void watch(WatchRequest watchRequest, StreamObserver<StringValue> responseObserver){
+    public void watch(WatchRequest watchRequest, StreamObserver<ResponseBody> responseObserver){
         // 解析watchRequest 参数
         // 需要参照EnhancerCommand.process写
 //        parseRequestParams(watchRequest);
         watchRequestModel = new WatchRequestModel(watchRequest);
         System.out.println(watchRequestModel.toString());
         System.out.println("参数初始化完成");
-        ArthasStreamObserverImpl<StringValue> stringValueArthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver, watchRequestModel, sessionManager);
+        ArthasStreamObserverImpl<ResponseBody> stringValueArthasStreamObserver = new ArthasStreamObserverImpl<>(responseObserver, watchRequestModel, sessionManager);
         // arthasStreamObserver 传入到advisor中，实现异步传输数据
         if(jobs.containsKey(watchRequestModel.getJobId())){
             arthasStreamObserver = jobs.get(watchRequestModel.getJobId());
@@ -64,7 +66,8 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
             watchRequestModel.setListenerId(listener.id());
             arthasStreamObserver.setRequestModel(watchRequestModel);
             listener.setArthasStreamObserver(arthasStreamObserver);
-            arthasStreamObserver.write("SUCCESS CHANGE!!!!!!!!!!!");
+            arthasStreamObserver.appendResult(new MessageModel("SUCCESS CHANGE!!!!!!!!!!!"));
+//            arthasStreamObserver.write("SUCCESS CHANGE!!!!!!!!!!!");
             stringValueArthasStreamObserver.end(0,"修改成功!!!");
         }else {
             arthasStreamObserver = stringValueArthasStreamObserver;
@@ -108,7 +111,7 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
 
         if (!session.tryLock()) {
             String msg = "someone else is enhancing classes, pls. wait.";
-            arthasStreamObserver.appendResult(new EnhancerModel(null, false, msg));
+//            arthasStreamObserver.appendResult(new EnhancerModel(null, false, msg));
             arthasStreamObserver.end(-1, msg);
             return;
         }
@@ -120,7 +123,7 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
             if (listener == null) {
                 logger.error("advice listener is null");
                 String msg = "advice listener is null, check arthas log";
-                arthasStreamObserver.appendResult(new EnhancerModel(effect, false, msg));
+//                arthasStreamObserver.appendResult(new EnhancerModel(effect, false, msg));
                 arthasStreamObserver.end(-1, msg);
                 return;
             }
@@ -135,20 +138,21 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
             effect = enhancer.enhance(inst, watchRequestModel.getMaxNumOfMatchedClass());
             if (effect.getThrowable() != null) {
                 String msg = "error happens when enhancing class: "+effect.getThrowable().getMessage();
-                arthasStreamObserver.appendResult(new EnhancerModel(effect, false, msg));
-                arthasStreamObserver.end(1, msg + ", check arthas log: " + LogUtil.loggingFile());
+//                arthasStreamObserver.appendResult(new EnhancerModel(effect, false, msg));
+                arthasStreamObserver.end(-1, msg + ", check arthas log: " + LogUtil.loggingFile());
                 return;
             }
 
             if (effect.cCnt() == 0 || effect.mCnt() == 0) {
                 // no class effected
                 if (!StringUtils.isEmpty(effect.getOverLimitMsg())) {
-                    arthasStreamObserver.appendResult(new EnhancerModel(effect, false));
-                    arthasStreamObserver.end(-1);
+                    String msg = "no class effected";
+//                    arthasStreamObserver.appendResult(new EnhancerModel(effect, false));
+                    arthasStreamObserver.end(-1, msg);
                     return;
                 }
                 // might be method code too large
-                arthasStreamObserver.appendResult(new EnhancerModel(effect, false, "No class or method is affected"));
+//                arthasStreamObserver.appendResult(new EnhancerModel(effect, false, "No class or method is affected"));
 
                 String smCommand = Ansi.ansi().fg(Ansi.Color.GREEN).a("sm CLASS_NAME METHOD_NAME").reset().toString();
                 String optionsCommand = Ansi.ansi().fg(Ansi.Color.GREEN).a("options unsafe true").reset().toString();
@@ -163,7 +167,7 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
                         + "4. Match the constructor, use `<init>`, for example: `watch demo.MathGame <init>`\n"
                         + "5. Check arthas log: " + logStr + "\n"
                         + "6. Visit " + issueStr + " for more details.";
-                arthasStreamObserver.end(-1,msg);
+                arthasStreamObserver.end(-1, msg);
                 return;
             }
             arthasStreamObserver.appendResult(new EnhancerModel(effect, true));
@@ -172,7 +176,7 @@ public class WatchCommandService extends WatchGrpc.WatchImplBase {
         } catch (Throwable e) {
             String msg = "error happens when enhancing class: "+e.getMessage();
             logger.error(msg, e);
-            arthasStreamObserver.appendResult(new EnhancerModel(effect, false, msg));
+//            arthasStreamObserver.appendResult(new EnhancerModel(effect, false, msg));
             arthasStreamObserver.end(-1, msg);
         } finally {
             if (session.getLock() == lock) {

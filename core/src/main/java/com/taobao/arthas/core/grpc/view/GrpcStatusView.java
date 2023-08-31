@@ -1,5 +1,6 @@
 package com.taobao.arthas.core.grpc.view;
 
+import com.taobao.arthas.core.AutoGrpc.ResponseBody;
 import com.taobao.arthas.core.command.model.StatusModel;
 import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
 
@@ -11,7 +12,12 @@ public class GrpcStatusView extends GrpcResultView<StatusModel> {
     @Override
     public void draw(ArthasStreamObserver arthasStreamObserver, StatusModel result) {
         if (result.getMessage() != null) {
-            arthasStreamObserver.write(result.getMessage());
+            ResponseBody responseBody  = ResponseBody.newBuilder()
+                    .setSessionId(arthasStreamObserver.session().getSessionId())
+                    .setStatusCode(result.getStatusCode())
+                    .setMessage(result.getMessage())
+                    .build();
+            arthasStreamObserver.onNext(responseBody);
         }
     }
 }

@@ -1,5 +1,8 @@
 package com.taobao.arthas.core.grpc.view;
 
+import com.google.protobuf.Any;
+import com.taobao.arthas.core.AutoGrpc.ResponseBody;
+import com.taobao.arthas.core.AutoGrpc.StringValue;
 import com.taobao.arthas.core.command.model.EnhancerModel;
 import com.taobao.arthas.core.command.view.ViewRenderUtil;
 import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
@@ -13,7 +16,13 @@ public class GrpcEnhancerView extends GrpcResultView<EnhancerModel> {
     public void draw(ArthasStreamObserver arthasStreamObserver, EnhancerModel result) {
         // ignore enhance result status, judge by the following output
         if (result.getEffect() != null) {
-            arthasStreamObserver.write(ViewRenderUtil.renderEnhancerAffect(result.getEffect()));
+            String msg = ViewRenderUtil.renderEnhancerAffect(result.getEffect());
+            ResponseBody responseBody  = ResponseBody.newBuilder()
+                    .setSessionId(arthasStreamObserver.session().getSessionId())
+                    .setStatusCode(0)
+                    .setMessage(msg)
+                    .build();
+            arthasStreamObserver.onNext(responseBody);
         }
     }
 }

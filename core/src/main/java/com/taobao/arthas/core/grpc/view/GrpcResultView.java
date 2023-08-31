@@ -20,13 +20,4 @@ public abstract class GrpcResultView<T extends ResultModel> {
      */
     public abstract void draw(ArthasStreamObserver arthasStreamObserver, T result);
 
-    /**
-     * write str and append a new line
-     *
-     * @param arthasStreamObserver
-     * @param str
-     */
-    protected void writeln(ArthasStreamObserver arthasStreamObserver, String str) {
-        arthasStreamObserver.write(str + "\n");
-    }
 }
