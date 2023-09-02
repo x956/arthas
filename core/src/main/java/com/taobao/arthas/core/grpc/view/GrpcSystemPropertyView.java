@@ -22,7 +22,7 @@ public class GrpcSystemPropertyView extends GrpcResultView<SystemPropertyModel>{
 
         ResponseBody responseBody  = ResponseBody.newBuilder()
                 .setSessionId(arthasStreamObserver.session().getSessionId())
-                .setStatusCode(0)
+                .setStatusCode(1)
                 .setMessage("SUCCEEDED")
                 .setBody(anyMessage)
                 .build();

@@ -36,32 +36,10 @@ public class GrpcWatchView extends GrpcResultView<WatchModel> {
         Any anyMessage = Any.pack(watchResponse);
         ResponseBody responseBody  = ResponseBody.newBuilder()
                 .setSessionId(arthasStreamObserver.session().getSessionId())
-                .setStatusCode(0)
+                .setStatusCode(1)
                 .setMessage("SUCCEEDED")
                 .setBody(anyMessage)
                 .build();
         arthasStreamObserver.onNext(responseBody);
-
-//        Map<String,Object> watchResults = new HashMap<>();
-//        watchResults.put("accessPoint",model.getAccessPoint());
-//        watchResults.put("className", model.getClassName());
-//        watchResults.put("cost", model.getCost());
-//        watchResults.put("jobId", model.getJobId());
-//        watchResults.put("methodName", model.getMethodName());
-//        watchResults.put("sizeLimit", model.getSizeLimit());
-//        watchResults.put("ts",DateUtils.formatDate(model.getTs()));
-//        watchResults.put("type", model.getType());
-//        watchResults.put("value", result);
-//
-//        Map<String,Object> resultMap = new HashMap<>();
-//        resultMap.put("body",watchResults);
-//        resultMap.put("consumerId","");
-//        resultMap.put("requestId", "");
-//        resultMap.put("sessionId", arthasStreamObserver.session().getSessionId());
-//        resultMap.put("state","SUCCEEDED");
-//        String JsonResult = JSON.toJSONString(resultMap);
-//        arthasStreamObserver.write(JsonResult);
-//        arthasStreamObserver.write("method=" + model.getClassName() + "." + model.getMethodName() + " location=" + model.getAccessPoint() + "\n");
-//        arthasStreamObserver.write("ts=" + DateUtils.formatDate(model.getTs()) + "; [cost=" + model.getCost() + "ms] result=" + result + "\n");
     }
 }

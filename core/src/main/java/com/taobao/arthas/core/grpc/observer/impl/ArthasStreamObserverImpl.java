@@ -8,6 +8,7 @@ import com.taobao.arthas.core.command.model.StatusModel;
 import com.taobao.arthas.core.distribution.ResultDistributor;
 import com.taobao.arthas.core.distribution.impl.GrpcResultDistributorImpl;
 import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
+import com.taobao.arthas.core.grpc.service.GrpcJobController;
 import com.taobao.arthas.core.server.ArthasBootstrap;
 import com.taobao.arthas.core.shell.session.Session;
 import com.taobao.arthas.core.shell.session.SessionManager;
@@ -33,23 +34,20 @@ public class ArthasStreamObserverImpl<T> implements ArthasStreamObserver<T> {
 
     private ClassFileTransformer transformer;
 
-    private int jobId;
-
-    private boolean isChanged;
+    private final int jobId;
 
     private final JobControllerImpl jobController;
-
-    private final SessionManager sessionManager;
 
     private Session session;
 
     private ResultDistributor resultDistributor;
 
+    private GrpcJobController grpcJobController;
 
-    public ArthasStreamObserverImpl(StreamObserver<T> streamObserver, Object requestModel, SessionManager sessionManager){
+
+    public ArthasStreamObserverImpl(StreamObserver<T> streamObserver, Object requestModel, SessionManager sessionManager, GrpcJobController grpcJobController){
         this.streamObserver = streamObserver;
         this.jobController = (JobControllerImpl) sessionManager.getJobController();
-        this.sessionManager = sessionManager;
         this.session = sessionManager.createSession();
         this.jobId = jobController.generateGrpcJobId();
         if (resultDistributor == null) {
@@ -61,6 +59,8 @@ public class ArthasStreamObserverImpl<T> implements ArthasStreamObserver<T> {
         this.requestModel = requestModel;
         // 配置客户端取消事件
         this.setOnCancelHandler();
+        this.grpcJobController = grpcJobController;
+        this.grpcJobController.registerGrpcJob(jobId, this);
     }
 
 
@@ -76,8 +76,9 @@ public class ArthasStreamObserverImpl<T> implements ArthasStreamObserver<T> {
 
     @Override
     public void onCompleted() {
-        streamObserver.onCompleted();
         this.process.setProcessStatus(ExecStatus.TERMINATED);
+        grpcJobController.unRegisterGrpcJob(this.jobId);
+        streamObserver.onCompleted();
     }
 
     @Override
@@ -124,6 +125,11 @@ public class ArthasStreamObserverImpl<T> implements ArthasStreamObserver<T> {
     @Override
     public void end() {
         end(0);
+    }
+
+    @Override
+    public ExecStatus getPorcessStatus() {
+        return this.process.status();
     }
 
     @Override

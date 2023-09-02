@@ -86,12 +86,12 @@ public class WatchRpcAdviceListener extends RpcAdviceListenerAdapter {
             System.out.println("************job:  "+ arthasStreamObserver.getJobId() + "  rpc watch advice开始正式执行,执行信息如下*****************");
             System.out.println("listener ID: + " + arthasStreamObserver.getListener().id());
             System.out.println("参数: \n" + watchRequestModel.toString());
-            System.out.println("###############执行完毕***************** \n\n");
+            System.out.println("###################***************** \n\n");
             double cost = threadLocalWatch.costInMillis();
             boolean conditionResult = isConditionMet(watchRequestModel.getConditionExpress(), advice, cost);
             if (this.isVerbose()) {
                 String msg = "Condition express: " + watchRequestModel.getConditionExpress() + " , result: " + conditionResult + "\n";
-//                arthasStreamObserver.appendResult(new MessageModel(msg));
+                arthasStreamObserver.appendResult(new MessageModel(msg));
             }
             if (conditionResult) {
                 Object value = getExpressionResult(watchRequestModel.getExpress(), advice, cost);

@@ -2,6 +2,7 @@ package com.taobao.arthas.core.grpc.server;
 
 import com.alibaba.arthas.deps.org.slf4j.Logger;
 import com.alibaba.arthas.deps.org.slf4j.LoggerFactory;
+import com.taobao.arthas.core.grpc.service.GrpcJobController;
 import com.taobao.arthas.core.grpc.service.PwdCommandService;
 import com.taobao.arthas.core.grpc.service.SystemPropertyCommandService;
 import com.taobao.arthas.core.grpc.service.WatchCommandService;
@@ -41,10 +42,11 @@ public class GrpcTermServer extends TermServer {
     @Override
     public TermServer listen(Handler<Future<TermServer>> listenHandler) {
         try {
+            GrpcJobController grpcJobController = new GrpcJobController();
             grpcServer = ServerBuilder.forPort(port)
-                    .addService(new PwdCommandService(sessionManager))
-                    .addService(new SystemPropertyCommandService(sessionManager))
-                    .addService(new WatchCommandService(sessionManager))
+                    .addService(new PwdCommandService(sessionManager,grpcJobController))
+                    .addService(new SystemPropertyCommandService(sessionManager,grpcJobController))
+                    .addService(new WatchCommandService(sessionManager,grpcJobController))
                     .build()
                     .start();
             logger.info("Server started, listening on " + port);

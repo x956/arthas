@@ -25,7 +25,7 @@ public class GrpcPwdView extends GrpcResultView<PwdModel> {
 
         ResponseBody responseBody  = ResponseBody.newBuilder()
                 .setSessionId(arthasStreamObserver.session().getSessionId())
-                .setStatusCode(0)
+                .setStatusCode(1)
                 .setMessage("SUCCEEDED")
                 .setBody(anyMessage)
                 .build();
