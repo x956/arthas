@@ -16,14 +16,10 @@ import io.grpc.Server;
 import io.grpc.ServerBuilder;
 
 import java.io.IOException;
-import java.lang.instrument.Instrumentation;
 
 public class GrpcTermServer extends TermServer {
 
     private static final Logger logger = LoggerFactory.getLogger(GrpcTermServer.class);
-
-//    private Handler<Term> termHandler;
-//    private NettyWebsocketTtyBootstrap bootstrap;
     private int port;
     private Server grpcServer;
     private final SessionManager sessionManager;
@@ -50,15 +46,12 @@ public class GrpcTermServer extends TermServer {
                     .build()
                     .start();
             logger.info("Server started, listening on " + port);
-            Runtime.getRuntime().addShutdownHook(new Thread() {
+            Runtime.getRuntime().addShutdownHook(new Thread("grpc-server-shutdown") {
                 @Override
                 public void run() {
-                    // Use stderr here since the logger may have been reset by its JVM shutdown hook.
-                    System.err.println("*** shutting down gRPC server since JVM is shutting down");
-                    if (grpcServer != null) {
-                        grpcServer.shutdown();
-                    }
-                    System.err.println("*** server shut down");
+                if (grpcServer != null) {
+                    grpcServer.shutdown();
+                }
                 }
             });
         }catch (IOException e) {

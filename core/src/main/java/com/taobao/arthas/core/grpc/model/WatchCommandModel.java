@@ -1,14 +1,17 @@
 package com.taobao.arthas.core.grpc.model;
 
 import com.taobao.arthas.core.AutoGrpc.WatchRequest;
+import com.taobao.arthas.core.GlobalOptions;
+import com.taobao.arthas.core.advisor.AdviceListener;
+import com.taobao.arthas.core.advisor.AdviceWeaver;
+import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
+import com.taobao.arthas.core.grpc.service.advisor.WatchRpcAdviceListener;
 import com.taobao.arthas.core.util.SearchUtils;
 import com.taobao.arthas.core.util.StringUtils;
 import com.taobao.arthas.core.util.matcher.Matcher;
 
-import java.util.Collections;
-import java.util.List;
 
-public class WatchRequestModel {
+public class WatchCommandModel extends EnhancerCommandModel {
     private String classPattern;
     private String methodPattern;
     private String express;
@@ -21,23 +24,6 @@ public class WatchRequestModel {
     private Integer sizeLimit = 10 * 1024 * 1024;
     private boolean isRegEx = false;
     private int numberOfLimit = 100;
-
-    protected static final List<String> EMPTY = Collections.emptyList();
-    public static final String[] EXPRESS_EXAMPLES = { "params", "returnObj", "throwExp", "target", "clazz", "method",
-            "{params,returnObj}", "params[0]" };
-    private String excludeClassPattern;
-
-    private Matcher classNameMatcher;
-    private Matcher classNameExcludeMatcher;
-    private Matcher methodNameMatcher;
-
-    private long listenerId;
-
-    private long jobId;
-
-    private boolean verbose;
-
-    private int maxNumOfMatchedClass;
 
 
     public String toString() {
@@ -55,13 +41,14 @@ public class WatchRequestModel {
                 ", isRegEx=" + isRegEx +
                 ", numberOfLimit=" + numberOfLimit +
                 ", excludeClassPattern='" + excludeClassPattern + '\'' +
+                ", jobId=" + jobId +
                 ", listenerId=" + listenerId +
                 ", verbose=" + verbose +
                 ", maxNumOfMatchedClass=" + maxNumOfMatchedClass +
                 '}';
     }
 
-    public WatchRequestModel(WatchRequest watchRequest) {
+    public WatchCommandModel(WatchRequest watchRequest) {
         parseRequestParams(watchRequest);
     }
 
@@ -78,6 +65,20 @@ public class WatchRequestModel {
         }
         return methodNameMatcher;
     }
+
+    @Override
+    protected AdviceListener getAdviceListener(ArthasStreamObserver arthasStreamObserver) {
+        WatchCommandModel watchCommandModel = (WatchCommandModel) arthasStreamObserver.getRequestModel();
+        if (watchCommandModel.getListenerId()!= 0) {
+            AdviceListener listener = AdviceWeaver.listener(watchCommandModel.getListenerId());
+            if (listener != null) {
+                return listener;
+            }
+        }
+        return new WatchRpcAdviceListener(arthasStreamObserver, GlobalOptions.verbose || watchCommandModel.isVerbose());
+    }
+
+
     public Matcher getClassNameExcludeMatcher() {
         if (classNameExcludeMatcher == null && getExcludeClassPattern() != null) {
             classNameExcludeMatcher = SearchUtils.classNameMatcher(getExcludeClassPattern(), isRegEx());

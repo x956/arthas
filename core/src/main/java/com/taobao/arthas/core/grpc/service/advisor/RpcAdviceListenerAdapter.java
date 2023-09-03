@@ -1,7 +1,6 @@
 package com.taobao.arthas.core.grpc.service.advisor;
 
 import com.taobao.arthas.core.advisor.AdviceListenerAdapter;
-import com.taobao.arthas.core.command.model.MessageModel;
 import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
 
 public abstract class RpcAdviceListenerAdapter extends AdviceListenerAdapter {

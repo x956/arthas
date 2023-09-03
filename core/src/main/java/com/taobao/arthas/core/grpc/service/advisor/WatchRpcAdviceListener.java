@@ -8,9 +8,8 @@ import com.taobao.arthas.core.advisor.ArthasMethod;
 import com.taobao.arthas.core.command.model.MessageModel;
 import com.taobao.arthas.core.command.model.ObjectVO;
 import com.taobao.arthas.core.command.model.WatchModel;
-import com.taobao.arthas.core.grpc.model.WatchRequestModel;
+import com.taobao.arthas.core.grpc.model.WatchCommandModel;
 import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
-import com.taobao.arthas.core.grpc.service.WatchCommandService;
 import com.taobao.arthas.core.util.LogUtil;
 import com.taobao.arthas.core.util.ThreadLocalWatch;
 
@@ -24,23 +23,23 @@ public class WatchRpcAdviceListener extends RpcAdviceListenerAdapter {
     private static final Logger logger = LoggerFactory.getLogger(WatchRpcAdviceListener.class);
     private final ThreadLocalWatch threadLocalWatch = new ThreadLocalWatch();
 
-    private WatchRequestModel watchRequestModel;
+    private WatchCommandModel watchCommandModel;
 
     private ArthasStreamObserver arthasStreamObserver;
 
     public WatchRpcAdviceListener(ArthasStreamObserver arthasStreamObserver, boolean verbose) {
         this.arthasStreamObserver = arthasStreamObserver;
-        this.watchRequestModel = (WatchRequestModel) arthasStreamObserver.getRequestModel();
+        this.watchCommandModel = (WatchCommandModel) arthasStreamObserver.getRequestModel();
         super.setVerbose(verbose);
     }
 
     public void setArthasStreamObserver(ArthasStreamObserver arthasStreamObserver) {
         this.arthasStreamObserver = arthasStreamObserver;
-        this.watchRequestModel = (WatchRequestModel) arthasStreamObserver.getRequestModel();
+        this.watchCommandModel = (WatchCommandModel) arthasStreamObserver.getRequestModel();
     }
 
     private boolean isFinish() {
-        return watchRequestModel.isFinish() || !watchRequestModel.isBefore() && !watchRequestModel.isException() && !watchRequestModel.isSuccess();
+        return watchCommandModel.isFinish() || !watchCommandModel.isBefore() && !watchCommandModel.isException() && !watchCommandModel.isSuccess();
     }
 
     @Override
@@ -48,7 +47,7 @@ public class WatchRpcAdviceListener extends RpcAdviceListenerAdapter {
             throws Throwable {
         // 开始计算本次方法调用耗时
         threadLocalWatch.start();
-        if (watchRequestModel.isBefore()) {
+        if (watchCommandModel.isBefore()) {
             watching(Advice.newForBefore(loader, clazz, method, target, args));
         }
     }
@@ -57,7 +56,7 @@ public class WatchRpcAdviceListener extends RpcAdviceListenerAdapter {
     public void afterReturning(ClassLoader loader, Class<?> clazz, ArthasMethod method, Object target, Object[] args,
                                Object returnObject) throws Throwable {
         Advice advice = Advice.newForAfterReturning(loader, clazz, method, target, args, returnObject);
-        if (watchRequestModel.isSuccess()) {
+        if (watchCommandModel.isSuccess()) {
             watching(advice);
         }
         finishing(advice);
@@ -67,7 +66,7 @@ public class WatchRpcAdviceListener extends RpcAdviceListenerAdapter {
     public void afterThrowing(ClassLoader loader, Class<?> clazz, ArthasMethod method, Object target, Object[] args,
                               Throwable throwable) {
         Advice advice = Advice.newForAfterThrowing(loader, clazz, method, target, args, throwable);
-        if (watchRequestModel.isException()) {
+        if (watchCommandModel.isException()) {
             watching(advice);
         }
         finishing(advice);
@@ -85,22 +84,22 @@ public class WatchRpcAdviceListener extends RpcAdviceListenerAdapter {
             // 本次调用的耗时
             System.out.println("************job:  "+ arthasStreamObserver.getJobId() + "  rpc watch advice开始正式执行,执行信息如下*****************");
             System.out.println("listener ID: + " + arthasStreamObserver.getListener().id());
-            System.out.println("参数: \n" + watchRequestModel.toString());
+            System.out.println("参数: \n" + watchCommandModel.toString());
             System.out.println("###################***************** \n\n");
             double cost = threadLocalWatch.costInMillis();
-            boolean conditionResult = isConditionMet(watchRequestModel.getConditionExpress(), advice, cost);
+            boolean conditionResult = isConditionMet(watchCommandModel.getConditionExpress(), advice, cost);
             if (this.isVerbose()) {
-                String msg = "Condition express: " + watchRequestModel.getConditionExpress() + " , result: " + conditionResult + "\n";
+                String msg = "Condition express: " + watchCommandModel.getConditionExpress() + " , result: " + conditionResult + "\n";
                 arthasStreamObserver.appendResult(new MessageModel(msg));
             }
             if (conditionResult) {
-                Object value = getExpressionResult(watchRequestModel.getExpress(), advice, cost);
+                Object value = getExpressionResult(watchCommandModel.getExpress(), advice, cost);
 
                 WatchModel model = new WatchModel();
                 model.setTs(new Date());
                 model.setCost(cost);
-                model.setValue(new ObjectVO(value, watchRequestModel.getExpand()));
-                model.setSizeLimit(watchRequestModel.getSizeLimit());
+                model.setValue(new ObjectVO(value, watchCommandModel.getExpand()));
+                model.setSizeLimit(watchCommandModel.getSizeLimit());
                 model.setClassName(advice.getClazz().getName());
                 model.setMethodName(advice.getMethod().getName());
                 if (advice.isBefore()) {
@@ -112,14 +111,14 @@ public class WatchRpcAdviceListener extends RpcAdviceListenerAdapter {
                 }
                 arthasStreamObserver.appendResult(model);
                 arthasStreamObserver.times().incrementAndGet();
-                if (isLimitExceeded(watchRequestModel.getNumberOfLimit(), arthasStreamObserver.times().get())) {
-                    abortProcess(arthasStreamObserver, watchRequestModel.getNumberOfLimit());
+                if (isLimitExceeded(watchCommandModel.getNumberOfLimit(), arthasStreamObserver.times().get())) {
+                    abortProcess(arthasStreamObserver, watchCommandModel.getNumberOfLimit());
                 }
             }
         } catch (Throwable e) {
             logger.warn("watch failed.", e);
-            arthasStreamObserver.end(-1, "watch failed, condition is: " + watchRequestModel.getConditionExpress() + ", express is: "
-                    + watchRequestModel.getExpress() + ", " + e.getMessage() + ", visit " + LogUtil.loggingFile()
+            arthasStreamObserver.end(-1, "watch failed, condition is: " + watchCommandModel.getConditionExpress() + ", express is: "
+                    + watchCommandModel.getExpress() + ", " + e.getMessage() + ", visit " + LogUtil.loggingFile()
                     + " for more details.");
         }
     }

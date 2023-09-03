@@ -6,7 +6,6 @@ import com.taobao.arthas.core.command.model.SystemPropertyModel;
 import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
 import com.taobao.arthas.core.grpc.observer.impl.ArthasStreamObserverImpl;
 import com.taobao.arthas.core.shell.session.SessionManager;
-import com.taobao.arthas.core.shell.system.impl.JobControllerImpl;
 import io.grpc.stub.StreamObserver;
 
 import java.util.Map;
