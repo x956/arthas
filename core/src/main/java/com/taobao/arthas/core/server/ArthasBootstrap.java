@@ -52,6 +52,7 @@ import com.taobao.arthas.core.env.MapPropertySource;
 import com.taobao.arthas.core.env.PropertiesPropertySource;
 import com.taobao.arthas.core.env.PropertySource;
 import com.taobao.arthas.core.grpc.server.GrpcTermServer;
+import com.taobao.arthas.core.grpc.server.GrpcWebProxyServer;
 import com.taobao.arthas.core.grpc.view.GrpcResultViewResolver;
 import com.taobao.arthas.core.security.SecurityAuthenticator;
 import com.taobao.arthas.core.security.SecurityAuthenticatorImpl;
@@ -110,6 +111,8 @@ public class ArthasBootstrap {
     private ShellServer shellServer;
 
     private GrpcTermServer grpcTermServer;
+
+    private GrpcWebProxyServer grpcWebProxyServer;
 
     private ScheduledExecutorService executorService;
     private SessionManager sessionManager;
@@ -467,6 +470,10 @@ public class ArthasBootstrap {
                 logger().info("try to bind grpc server, host: {}, port: {}.", configure.getIp(), configure.getGrpcPort());
                 grpcTermServer = new GrpcTermServer(configure.getGrpcPort(), sessionManager);
                 grpcTermServer.listen(null);
+
+                logger().info("try to bind grpc web proxy server, host: {}, port: {}.", configure.getIp(), 8567);
+                grpcWebProxyServer = new GrpcWebProxyServer(configure.getGrpcPort(), 8567);
+                grpcWebProxyServer.listen(null);
 //                shellServer.registerTermServer(new GrpcTermServer(configure.getIp(), configure.getGrpcPort(),
 //                        options.getConnectionTimeout(),workerGroup,httpSessionManager));
             } else {

@@ -1,6 +1,6 @@
 package com.taobao.arthas.core.grpc.view;
 
-import com.taobao.arthas.core.AutoGrpc.ResponseBody;
+import arthas.grpc.api.ArthasService.ResponseBody;
 import com.taobao.arthas.core.command.model.StatusModel;
 import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
 

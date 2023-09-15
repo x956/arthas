@@ -1,7 +1,10 @@
 package com.taobao.arthas.core.grpc.service;
 
+import arthas.grpc.api.ArthasService.ResponseBody;
+import arthas.grpc.api.ArthasService.StringKey;
+import arthas.grpc.api.ArthasService.Properties;
+import arthas.grpc.api.SystemPropertyGrpc;
 import com.google.protobuf.Empty;
-import com.taobao.arthas.core.AutoGrpc.*;
 import com.taobao.arthas.core.command.model.SystemPropertyModel;
 import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
 import com.taobao.arthas.core.grpc.observer.impl.ArthasStreamObserverImpl;

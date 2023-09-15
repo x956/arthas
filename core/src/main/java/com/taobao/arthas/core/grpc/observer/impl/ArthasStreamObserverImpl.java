@@ -1,6 +1,6 @@
 package com.taobao.arthas.core.grpc.observer.impl;
 
-import com.taobao.arthas.core.AutoGrpc.StringValue;
+import arthas.grpc.api.ArthasService.StringValue;
 import com.taobao.arthas.core.advisor.AdviceListener;
 import com.taobao.arthas.core.advisor.AdviceWeaver;
 import com.taobao.arthas.core.command.model.ResultModel;

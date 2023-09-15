@@ -1,8 +1,8 @@
 package com.taobao.arthas.core.grpc.view;
 
 import com.google.protobuf.Any;
-import com.taobao.arthas.core.AutoGrpc.ResponseBody;
-import com.taobao.arthas.core.AutoGrpc.SimpleResponse;
+import arthas.grpc.api.ArthasService.ResponseBody;
+import arthas.grpc.api.ArthasService.SimpleResponse;
 import com.taobao.arthas.core.command.model.SystemPropertyModel;
 import com.taobao.arthas.core.grpc.observer.ArthasStreamObserver;
 import com.taobao.arthas.core.shell.system.ExecStatus;

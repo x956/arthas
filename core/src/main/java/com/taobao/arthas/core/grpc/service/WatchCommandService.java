@@ -1,10 +1,9 @@
 package com.taobao.arthas.core.grpc.service;
 
+import arthas.grpc.api.WatchGrpc;
+import arthas.grpc.api.ArthasService.*;
 import com.alibaba.arthas.deps.org.slf4j.Logger;
 import com.alibaba.arthas.deps.org.slf4j.LoggerFactory;
-import com.taobao.arthas.core.AutoGrpc.ResponseBody;
-import com.taobao.arthas.core.AutoGrpc.WatchGrpc;
-import com.taobao.arthas.core.AutoGrpc.WatchRequest;
 import com.taobao.arthas.core.advisor.AdviceWeaver;
 import com.taobao.arthas.core.command.model.MessageModel;
 import com.taobao.arthas.core.grpc.model.WatchCommandModel;

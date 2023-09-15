@@ -1,6 +1,6 @@
 package com.taobao.arthas.core.grpc.model;
 
-import com.taobao.arthas.core.AutoGrpc.WatchRequest;
+import arthas.grpc.api.ArthasService.WatchRequest;
 import com.taobao.arthas.core.GlobalOptions;
 import com.taobao.arthas.core.advisor.AdviceListener;
 import com.taobao.arthas.core.advisor.AdviceWeaver;
