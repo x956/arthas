@@ -195,12 +195,20 @@ Async-profiler 2.9 built on May  8 2023
 Copyright 2016-2021 Andrei Pangin
 ```
 
-## 配置 framebuf 参数
+## 配置 Java 栈深度
 
-> 如果遇到生成的火焰图有 `[frame_buffer_overflow]`，则需要增大 framebuf（默认值是 1'000'000），可以显式配置，比如：
+可以使用 `-j` 或 `--jstackdepth` 选项指定最大 Java 栈深度。如果指定值大于默认值 2048，该选项会被忽略。当你不希望看到特别深的栈轨迹的时候，这个选项会很有用，以下是一个使用样例：
 
 ```bash
-profiler start --framebuf 5000000
+profiler start -j 256
+```
+
+## 各线程分别进行 profiling
+
+可以使用 `-t` 或 `--threads` 标志选项令 profiling 对各线程分别进行，每个栈轨迹都会以指示单个线程的帧结束。
+
+```bash
+profiler start -t
 ```
 
 ## 配置 include/exclude 来过滤数据
@@ -208,10 +216,11 @@ profiler start --framebuf 5000000
 如果应用比较复杂，生成的内容很多，想只关注部分 stack traces，可以通过 `--include/--exclude` 过滤 stack traces，`--include` 表示定义的匹配表达式必须出现在 stack traces，相反 `--exclude` 表示定义的匹配表达式一定不会出现在 stack traces。 匹配表达式可以以`*`开始或者结束,`*` 表示任何（可能为空）字符序列。 比如
 
 ```bash
-profiler start --include 'java/*' --include 'com/demo/*' --exclude '*Unsafe.park*'
+profiler stop --include 'java/*' --include 'com/demo/*' --exclude '*Unsafe.park*'
 ```
 
 > `--include/--exclude` 都支持多次设置，但是需要配置在命令行的最后。也可使用短参数格式 `-I/-X`。
+> 注意`--include/--exclude`只支持在`stop`action或者带有`-d`/`--duration`参数的`start`action中指定，否则不生效。
 
 ## 指定执行时间
 
@@ -253,3 +262,65 @@ profiler stop -s -g -a -l --title <flametitle> --minwidth 15 --reverse
 ## 生成的火焰图里的 unknown
 
 - https://github.com/jvm-profiling-tools/async-profiler/discussions/409
+
+## 配置 locks/allocations 模式的阈值
+
+当使用 lock 或 alloc event 进行 profiling 时，可以使用 `--lock` 或 `--alloc` 配置阈值，比如下列命令：
+
+```bash
+profiler start -e lock --lock 10ms
+profiler start -e alloc --alloc 2m
+```
+
+会记录竞争时间超过 10ms 的锁（如果不指定时间单位，则使用 ns 为单位），或者以 2MB 的单位记录对内存的分配。
+
+## 配置 JFR 块
+
+当使用 JFR 作为输出格式时，可以使用 `--chunksize` 或 `--chunktime` 配置单个 JFR 块的大致容量（以 byte 为单位，默认 100 MB）和时间限制（默认值为 1 小时），比如：
+
+```bash
+profiler start -f profile.jfr --chunksize 100m --chunktime 1h
+```
+
+## 将线程按照调度策略分组
+
+可以使用 `--sched` 标志选项将输出结果按照 Linux 线程调度策略分组，策略包括 BATCH/IDLE/OTHER。例如：
+
+```bash
+profiler start --sched
+```
+
+火焰图的倒数第二行会标记不同的调度策略。
+
+## 仅用未销毁对象构建内存分析结果
+
+使用 `--live` 标志选项在内存分析结果中仅保留那些在分析过程结束时仍未被 JVM 回收的对象。该选项在排查 Java 堆内存泄露问题时比较有用。
+
+```bash
+profiler start --live
+```
+
+## 配置收集 C 栈帧的方法
+
+使用 `--cstack MODE` 配置收集 native 帧的方法。候选模式有 fp (Frame Pointer), dwarf (DWARF unwind info), lbr (Last Branch Record, 从 Linux 4.1 在 Haswell 可用), and no (不收集 native 栈帧).
+
+默认情况下，C 栈帧会出现在 cpu、itimer、wall-clock、perf-events 模式中，而 Java 级别的 event 比如 alloc 和 lock 只收集 Java stack。
+
+```bash
+profiler --cstack fp
+```
+
+此命令将收集 native 栈帧的 Frame Pointer 信息。
+
+## 当指定 native 函数执行时开始/停止 profiling
+
+使用 `--begin function` 和 `--end function` 选项在指定 native 函数被执行时让 profiling 过程启动或终止。主要用途是分析特定的 JVM 阶段，比如 GC 和安全点。需要使用特定 JVM 实现中的 native 函数名，比如 HotSpot JVM 中的 `SafepointSynchronize::begin` 和 `SafepointSynchronize::end`。
+
+### Time-to-safepoint profiling
+
+选项 `--ttsp` 实际上是 `--begin SafepointSynchronize::begin --end RuntimeService::record_safepoint_synchronized` 的一个别名。它是一种约束而不是独立的 event 类型。无论选择哪种 event，profiler 都可以正常工作，但只有 VM 操作和 safepoint request 之间的事件会被记录下来。
+
+```bash
+profiler start --begin SafepointSynchronize::begin --end RuntimeService::record_safepoint_synchronized
+profiler --ttsp
+```

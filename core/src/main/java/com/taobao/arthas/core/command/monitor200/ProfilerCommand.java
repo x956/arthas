@@ -54,14 +54,13 @@ import one.profiler.Counter;
         + "  profiler stop --format html   # output file format, support flat[=N]|traces[=N]|collapsed|flamegraph|tree|jfr\n"
         + "  profiler stop --file /tmp/result.html\n"
         + "  profiler stop --threads \n"
-        + "  profiler start --include 'java/*' --include 'com/demo/*' --exclude '*Unsafe.park*'\n"
+        + "  profiler stop --include 'java/*' --include 'com/demo/*' --exclude '*Unsafe.park*'\n"
         + "  profiler status\n"
         + "  profiler resume              # Start or resume profiling without resetting collected data.\n"
         + "  profiler getSamples          # Get the number of samples collected during the profiling session\n"
         + "  profiler dumpFlat            # Dump flat profile, i.e. the histogram of the hottest methods\n"
         + "  profiler dumpCollapsed       # Dump profile in 'collapsed stacktraces' format\n"
         + "  profiler dumpTraces          # Dump collected stack traces\n"
-        + "  profiler execute 'start,framebuf=5000000'      # Execute an agent-compatible profiling command\n"
         + "  profiler execute 'stop,file=/tmp/result.html'   # Execute an agent-compatible profiling command\n"
         + Constants.WIKI + Constants.WIKI_HOME + "profiler")
 //@formatter:on
@@ -71,9 +70,33 @@ public class ProfilerCommand extends AnnotatedCommand {
     private String action;
     private String actionArg;
 
+    /**
+     * which event to trace (cpu, wall, cache-misses, etc.)
+     */
     private String event;
 
+    /**
+     * profile allocations with BYTES interval
+     * according to async-profiler README, alloc may contains non-numeric charactors
+     */
+    private String alloc;
+
+    /**
+     * build allocation profile from live objects only
+     */
+    private boolean live;
+
+    /**
+     * profile contended locks longer than DURATION ns
+     * according to async-profiler README, alloc may contains non-numeric charactors
+     */
+    private String lock;
+
+    /**
+     * output file name for dumping
+     */
     private String file;
+
     /**
      * output file format, default value is html.
      */
@@ -85,14 +108,25 @@ public class ProfilerCommand extends AnnotatedCommand {
     private Long interval;
 
     /**
-     * size of the buffer for stack frames (default: 1'000'000)
+     * maximum Java stack depth (default: 2048)
      */
-    private Long framebuf;
+    private Integer jstackdepth;
 
     /**
      * profile different threads separately
      */
     private boolean threads;
+
+    /**
+     * group threads by scheduling policy
+     */
+    private boolean sched;
+
+    /**
+     * how to collect C stack frames in addition to Java stack
+     * MODE is 'fp' (Frame Pointer), 'dwarf', 'lbr' (Last Branch Record) or 'no'
+     */
+    private String cstack;
 
     /**
      * use simple class names instead of FQN
@@ -115,11 +149,6 @@ public class ProfilerCommand extends AnnotatedCommand {
     private boolean lib;
 
     /**
-     * include only kernel-mode events
-     */
-    private boolean allkernel;
-
-    /**
      * include only user-mode events
      */
     private boolean alluser;
@@ -139,6 +168,21 @@ public class ProfilerCommand extends AnnotatedCommand {
      */
     private List<String> excludes;
 
+    /**
+     * automatically start profiling when the specified native function is executed.
+     */
+    private String begin;
+
+    /**
+     * automatically stop profiling when the specified native function is executed.
+     */
+    private String end;
+
+    /**
+     * time-to-safepoint profiling.
+     * An alias for --begin SafepointSynchronize::begin --end RuntimeService::record_safepoint_synchronized
+     */
+    private boolean ttsp;
 
     /**
      * FlameGraph title
@@ -159,6 +203,16 @@ public class ProfilerCommand extends AnnotatedCommand {
      * count the total value (time, bytes, etc.) instead of samples
      */
     private boolean total;
+
+    /**
+     * approximate size of JFR chunk in bytes (default: 100 MB)
+     */
+    private String chunksize;
+
+    /**
+     * duration of JFR chunk in seconds (default: 1 hour)
+     */
+    private String chunktime;
 
     private static String libPath;
     private static AsyncProfiler profiler = null;
@@ -217,11 +271,10 @@ public class ProfilerCommand extends AnnotatedCommand {
         this.interval = interval;
     }
 
-    @Option(shortName = "b", longName = "framebuf")
-    @Description("size of the buffer for stack frames (default: 1'000'000)")
-    @DefaultValue("1000000")
-    public void setFramebuf(long framebuf) {
-        this.framebuf = framebuf;
+    @Option(shortName = "j", longName = "jstackdepth")
+    @Description("maximum Java stack depth (default: 2048)")
+    public void setJstackdepth(int jstackdepth) {
+        this.jstackdepth = jstackdepth;
     }
 
     @Option(shortName = "f", longName = "file")
@@ -247,10 +300,40 @@ public class ProfilerCommand extends AnnotatedCommand {
         this.event = event;
     }
 
-    @Option(longName = "threads", flag = true)
+    @Option(longName = "alloc")
+    @Description("allocation profiling interval in bytes")
+    public void setAlloc(String alloc) {
+        this.alloc = alloc;
+    }
+
+    @Option(longName = "live", flag = true)
+    @Description("build allocation profile from live objects only")
+    public void setLive(boolean live) {
+        this.live = live;
+    }
+
+    @Option(longName = "lock")
+    @Description("lock profiling threshold in nanoseconds")
+    public void setLock(String lock) {
+        this.lock = lock;
+    }
+
+    @Option(shortName = "t", longName = "threads", flag = true)
     @Description("profile different threads separately")
     public void setThreads(boolean threads) {
         this.threads = threads;
+    }
+
+    @Option(longName = "sched", flag = true)
+    @Description("group threads by scheduling policy")
+    public void setSched(boolean sched) {
+        this.sched = sched;
+    }
+
+    @Option(longName = "cstack")
+    @Description("how to traverse C stack: fp|dwarf|lbr|no")
+    public void setCstack(String cstack) {
+        this.cstack = cstack;
     }
 
     @Option(shortName = "s", flag = true)
@@ -277,13 +360,7 @@ public class ProfilerCommand extends AnnotatedCommand {
         this.lib = lib;
     }
 
-    @Option(longName = "allkernel", flag = true)
-    @Description("include only kernel-mode events")
-    public void setAllkernel(boolean allkernel) {
-        this.allkernel = allkernel;
-    }
-
-    @Option(longName = "alluser", flag = true)
+    @Option(longName = "all-user", flag = true)
     @Description("include only user-mode events")
     public void setAlluser(boolean alluser) {
         this.alluser = alluser;
@@ -305,6 +382,25 @@ public class ProfilerCommand extends AnnotatedCommand {
     @Description("exclude stack traces containing PATTERN, for example: '*Unsafe.park*'")
     public void setExclude(List<String> excludes) {
         this.excludes = excludes;
+    }
+
+    @Option(longName = "begin")
+    @Description("automatically start profiling when the specified native function is executed")
+    public void setBegin(String begin) {
+        this.begin = begin;
+    }
+
+    @Option(longName = "end")
+    @Description("automatically stop profiling when the specified native function is executed")
+    public void setEnd(String end) {
+        this.end = end;
+    }
+
+    @Option(longName = "ttsp", flag = true)
+    @Description("time-to-safepoint profiling. "
+        + "An alias for --begin SafepointSynchronize::begin --end RuntimeService::record_safepoint_synchronized")
+    public void setTtsp(boolean ttsp) {
+        this.ttsp = ttsp;
     }
 
     @Option(longName = "title")
@@ -337,6 +433,18 @@ public class ProfilerCommand extends AnnotatedCommand {
     @Description("count the total value (time, bytes, etc.) instead of samples")
     public void setTotal(boolean total) {
         this.total = total;
+    }
+
+    @Option(longName = "chunksize")
+    @Description("approximate size limits for a single JFR chunk in bytes (default: 100 MB) or other units")
+    public void setChunksize(String chunksize) {
+        this.chunksize = chunksize;
+    }
+
+    @Option(longName = "chunktime")
+    @Description("approximate time limits for a single JFR chunk in second (default: 1 hour) or other units")
+    public void setChunktime(String chunktime) {
+        this.chunktime = chunktime;
     }
 
     private AsyncProfiler profilerInstance() {
@@ -396,70 +504,99 @@ public class ProfilerCommand extends AnnotatedCommand {
 
     private String executeArgs(ProfilerAction action) {
         StringBuilder sb = new StringBuilder();
+        final char COMMA = ',';
 
         // start - start profiling
         // resume - start or resume profiling without resetting collected data
         // stop - stop profiling
-        sb.append(action).append(',');
+        sb.append(action).append(COMMA);
 
         if (this.event != null) {
-            sb.append("event=").append(this.event).append(',');
+            sb.append("event=").append(this.event).append(COMMA);
+        }
+        if (this.alloc!= null) {
+            sb.append("alloc=").append(this.alloc).append(COMMA);
+        }
+        if (this.live) {
+            sb.append(this.live).append(COMMA);
+        }
+        if (this.lock!= null) {
+            sb.append("lock=").append(this.lock).append(COMMA);
         }
         if (this.file != null) {
-            sb.append("file=").append(this.file).append(',');
+            sb.append("file=").append(this.file).append(COMMA);
         }
         if (this.format != null) {
-            sb.append(this.format).append(',');
+            sb.append(this.format).append(COMMA);
         }
         if (this.interval != null) {
-            sb.append("interval=").append(this.interval).append(',');
+            sb.append("interval=").append(this.interval).append(COMMA);
         }
-        if (this.framebuf != null) {
-            sb.append("framebuf=").append(this.framebuf).append(',');
+        if (this.jstackdepth != null) {
+            sb.append("jstackdepth=").append(this.jstackdepth).append(COMMA);
         }
         if (this.threads) {
-            sb.append("threads").append(',');
+            sb.append("threads").append(COMMA);
+        }
+        if (this.sched) {
+            sb.append("sched").append(COMMA);
+        }
+        if (this.cstack != null) {
+            sb.append("cstack=").append(this.cstack).append(COMMA);
         }
         if (this.simple) {
-            sb.append("simple").append(",");
+            sb.append("simple").append(COMMA);
         }
         if (this.sig) {
-            sb.append("sig").append(",");
+            sb.append("sig").append(COMMA);
         }
         if (this.ann) {
-            sb.append("ann").append(",");
+            sb.append("ann").append(COMMA);
         }
         if (this.lib) {
-            sb.append("lib").append(",");
-        }
-        if (this.allkernel) {
-            sb.append("allkernel").append(',');
+            sb.append("lib").append(COMMA);
         }
         if (this.alluser) {
-            sb.append("alluser").append(',');
+            sb.append("alluser").append(COMMA);
         }
         if (this.includes != null) {
             for (String include : includes) {
-                sb.append("include=").append(include).append(',');
+                sb.append("include=").append(include).append(COMMA);
             }
         }
         if (this.excludes != null) {
             for (String exclude : excludes) {
-                sb.append("exclude=").append(exclude).append(',');
+                sb.append("exclude=").append(exclude).append(COMMA);
             }
+        }
+        if (this.ttsp) {
+            this.begin = "SafepointSynchronize::begin";
+            this.end = "RuntimeService::record_safepoint_synchronized";
+        }
+        if (this.begin != null) {
+            sb.append("begin=").append(this.begin).append(COMMA);
+        }
+        if (this.end != null) {
+            sb.append("end=").append(this.end).append(COMMA);
         }
 
         if (this.title != null) {
-            sb.append("title=").append(this.title).append(',');
+            sb.append("title=").append(this.title).append(COMMA);
         }
         if (this.minwidth != null) {
-            sb.append("minwidth=").append(this.minwidth).append(',');
+            sb.append("minwidth=").append(this.minwidth).append(COMMA);
         }
         if (this.reverse) {
-            sb.append("reverse").append(',');
+            sb.append("reverse").append(COMMA);
         }
         if (this.total) {
-            sb.append("total").append(',');
+            sb.append("total").append(COMMA);
+        }
+        if (this.chunksize != null) {
+            sb.append("chunksize=").append(this.chunksize).append(COMMA);
+        }
+        if (this.chunktime!= null) {
+            sb.append("chunktime=").append(this.chunktime).append(COMMA);
         }
 
         return sb.toString();

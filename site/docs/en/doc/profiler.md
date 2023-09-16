@@ -195,14 +195,20 @@ Async-profiler 2.9 built on May  8 2023
 Copyright 2016-2021 Andrei Pangin
 ```
 
-## Configure framebuf option
+## Configure Java stack depth
 
-::: tip
-you encounter `[frame_buffer_overflow]` in the generated result, you need to increase the framebuf (the default value is 1'000'000), which can be configured explicitly, such as:
-:::
+You can use `-j` or `--jstackdepth` option to configure maximum Java stack depth. This option will be ignored if value is greater than default 2048. This option is useful when you don't want to see stacks that are too deep. Below is usage example:
 
 ```bash
-profiler start --framebuf 5000000
+profiler start -j 256
+```
+
+## Profiling different threads separately
+
+You can use `-t` or `--threads` flag option to profile different threads separately, each stack trace will end with a frame that denotes a single thread.
+
+```bash
+profiler start -t
 ```
 
 ## Configure include/exclude to filter data
@@ -210,10 +216,11 @@ profiler start --framebuf 5000000
 If the application is complex and generates a lot of content, and you want to focus on only part of stack traces, you can filter stack traces by `--include/--exclude`. `--include` defines the name pattern that must be present in the stack traces, while `--exclude` is the pattern that must not occur in any of stack traces in the output.A pattern may begin or end with a star `*` that denotes any (possibly empty) sequence of characters. such as
 
 ```bash
-profiler start --include'java/*' --include 'com/demo/*' --exclude'*Unsafe.park*'
+profiler stop --include'java/*' --include 'com/demo/*' --exclude'*Unsafe.park*'
 ```
 
 > Both `--include/--exclude` support being set multiple times, but need to be configured at the end of the command line. You can also use short parameter format `-I/-X`.
+> Note that `--include/--exclude` only supports configuration at `stop` action or `start` action with `-d`/`--duration` parameter, otherwise it will not take effect.
 
 ## Specify execution time
 
@@ -255,3 +262,65 @@ profiler stop -s -g -a -l --title <flametitle> --minwidth 15 --reverse
 ## The 'unknown' in profiler result
 
 - https://github.com/jvm-profiling-tools/async-profiler/discussions/409
+
+## Config locks/allocations profiling threshold
+
+When profiling in locks or allocations event, you can use `--lock` or `--alloc` to config thresholds, for example:
+
+```bash
+profiler start -e lock --lock 10ms
+profiler start -e alloc --alloc 2m
+```
+
+will profile contended locks longer than 10ms (default unit is ns if no unit is specified), or profile allocations with 2m BYTES interval.
+
+## Config JFR chunks
+
+When using JFR as output format, you can use `--chunksize` or `--chunktime` to config approximate size (in bytes, default value is 100MB) and time limits (default value is 1 hour) for a single JFR chunk. For example:
+
+```bash
+profiler start -f profile.jfr --chunksize 100m --chunktime 1h
+```
+
+## Group threads by scheduling policy
+
+You can use `--sched` flag option to group threads in output by Linux-specific scheduling policy: BATCH/IDLE/OTHER, for example:
+
+```bash
+profiler start --sched
+```
+
+The second line from bottom in flamegraph represent the scheduling policy.
+
+## Build allocation profile from live objects only
+
+Use `--live` flag option to retain allocation samples with live objects only (object that have not been collected by the end of profiling session). Useful for finding Java heap memory leaks.
+
+```bash
+profiler start --live
+```
+
+## Config method of collecting C stack frames
+
+Use `--cstack MODE` to config how to walk native frames (C stack). Possible modes are fp (Frame Pointer), dwarf (DWARF unwind info), lbr (Last Branch Record, available on Haswell since Linux 4.1), and no (do not collect C stack).
+
+By default, C stack is shown in cpu, itimer, wall-clock and perf-events profiles. Java-level events like alloc and lock collect only Java stack.
+
+```bash
+profiler --cstack fp
+```
+
+The command above will collection Frame Pointer of C stacks.
+
+## Begin or end profiling when FUNCTION is executed
+
+Use `--begin function` and `--end function` to automatically start/stop profiling when the specified native function is executed. Its main purpose is to profile certain JVM phases like GC and Safepoint pauses. You should use native function name defined in a JVM implement, for example `SafepointSynchronize::begin` and `SafepointSynchronize::end` in HotSpot JVM.
+
+### Time-to-safepoint profiling
+
+The `--ttsp` option is an alias for `--begin SafepointSynchronize::begin --end RuntimeService::record_safepoint_synchronized`. It is not a separate event type, but rather a constraint. Whatever event type you choose (e.g. cpu or wall), the profiler will work as usual, except that only events between the safepoint request and the start of the VM operation will be recorded.
+
+```bash
+profiler start --begin SafepointSynchronize::begin --end RuntimeService::record_safepoint_synchronized
+profiler --ttsp
+```
