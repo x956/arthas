@@ -442,7 +442,8 @@ public class Bootstrap {
                             pid, bootstrap.getHttpPortOrDefault());
             AnsiLog.error("1. Try to restart arthas-boot, select process {}, shutdown it first with running the 'stop' command.",
                             httpPortPid);
-            AnsiLog.error("2. Or try to use different http port, for example: java -jar arthas-boot.jar --telnet-port 9998 --http-port 9999 --grpc-port 10000");
+            AnsiLog.error("2. Or try to use different http port, for example: java -jar arthas-boot.jar " +
+                    "--telnet-port 9998 --http-port 9999 --grpc-port 10000 --grpc-web-proxy-port 10001");
             System.exit(1);
         }
 
@@ -451,7 +452,8 @@ public class Bootstrap {
                     pid, bootstrap.getGrpcPortOrDefault());
             AnsiLog.error("1. Try to restart arthas-boot, select process {}, shutdown it first with running the 'stop' command.",
                     grpcPortPid);
-            AnsiLog.error("2. Or try to use different http port, for example: java -jar arthas-boot.jar --telnet-port 9998 --http-port 9999 --grpc-port 10000");
+            AnsiLog.error("2. Or try to use different grpc port, for example: java -jar arthas-boot.jar " +
+                    "--telnet-port 9998 --http-port 9999 --grpc-port 10000 --grpc-web-proxy-port 10001");
             System.exit(1);
         }
 
@@ -460,7 +462,8 @@ public class Bootstrap {
                     pid, bootstrap.getGrpcWebProxyPortOrDefault());
             AnsiLog.error("1. Try to restart arthas-boot, select process {}, shutdown it first with running the 'stop' command.",
                     grpcWebProxyPortPid);
-            AnsiLog.error("2. Or try to use different http port, for example: java -jar arthas-boot.jar --telnet-port 9998 --http-port 9999 --grpc-port 10000");
+            AnsiLog.error("2. Or try to use different grpc web proxy port, for example: java -jar arthas-boot.jar " +
+                    "--telnet-port 9998 --http-port 9999 --grpc-port 10000 --grpc-web-proxy-port 10001");
             System.exit(1);
         }
 

@@ -383,7 +383,7 @@ public class ArthasBootstrap {
         if (configure.getGrpcWebProxyPort() != null && configure.getGrpcWebProxyPort() == 0) {
             int newGrpcWebProxyPort = SocketUtils.findAvailableTcpPort();
             configure.setGrpcWebProxyPort(newGrpcWebProxyPort);
-            logger().info("generate random grpc port: " + newGrpcWebProxyPort);
+            logger().info("generate random grpc web proxy port: " + newGrpcWebProxyPort);
         }
 
         // try to find appName
@@ -473,16 +473,21 @@ public class ArthasBootstrap {
             }
             if (configure.getGrpcPort() != null && configure.getGrpcPort() > 0) {
                 logger().info("try to bind grpc server, host: {}, port: {}.", configure.getIp(), configure.getGrpcPort());
-                grpcTermServer = new GrpcTermServer(configure.getGrpcPort(), sessionManager);
-                grpcTermServer.listen(null);
-
-                logger().info("try to bind grpc web proxy server, host: {}, port: {}.", configure.getIp(), 8567);
-                grpcWebProxyServer = new GrpcWebProxyServer(configure.getGrpcPort(), 8567);
-                grpcWebProxyServer.listen(null);
-//                shellServer.registerTermServer(new GrpcTermServer(configure.getIp(), configure.getGrpcPort(),
-//                        options.getConnectionTimeout(),workerGroup,httpSessionManager));
+                boolean isStartFrpcWebProxyServer = true;
+                try {
+                    grpcTermServer = new GrpcTermServer(configure.getGrpcPort(), sessionManager);
+                    grpcTermServer.listen(null);
+                }catch (RuntimeException e){
+                    logger().error("fail to start grpc server, will not to start grpc web proxy server");
+                    isStartFrpcWebProxyServer = false;
+                }
+                if(isStartFrpcWebProxyServer){
+                    logger().info("try to bind grpc web proxy server, host: {}, port: {}.", configure.getIp(), configure.getGrpcWebProxyPort());
+                    grpcWebProxyServer = new GrpcWebProxyServer(configure.getGrpcPort(), configure.getGrpcWebProxyPort());
+                    grpcWebProxyServer.listen(null);
+                }
             } else {
-                logger().info("grpc port is {}, skip bind grpc server.", configure.getGrpcPort());
+                logger().info("grpc port is {}, skip bind grpc server and grpc web proxy server.", configure.getGrpcPort());
             }
 
             for (CommandResolver resolver : resolvers) {
@@ -497,8 +502,8 @@ public class ArthasBootstrap {
             }
 
 
-            logger().info("as-server listening on network={};telnet={};http={};timeout={};", configure.getIp(),
-                    configure.getTelnetPort(), configure.getHttpPort(), options.getConnectionTimeout());
+            logger().info("as-server listening on network={};telnet={};http={};timeout={};grpc={};grpc-web-proxy={};", configure.getIp(),
+                    configure.getTelnetPort(), configure.getHttpPort(), options.getConnectionTimeout(),configure.getGrpcPort(),configure.getGrpcWebProxyPort());
 
             // 异步回报启动次数
             if (configure.getStatUrl() != null) {
@@ -578,6 +583,9 @@ public class ArthasBootstrap {
         }
         if(grpcTermServer != null){
             grpcTermServer.close();
+        }
+        if(grpcWebProxyServer != null){
+            grpcWebProxyServer.close();
         }
         // clear the reference in Spy class.
         cleanUpSpyReference();

@@ -14,6 +14,8 @@ import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 
+import java.net.InetSocketAddress;
+
 public class GrpcWebProxyServer extends TermServer {
 
     private static final Logger logger = LoggerFactory.getLogger(GrpcWebProxyServer.class);
@@ -22,6 +24,8 @@ public class GrpcWebProxyServer extends TermServer {
     private int grpcPort;
     private EventLoopGroup bossGroup;
     private EventLoopGroup workerGroup;
+
+    private Channel channel;
 
     private ServerBootstrap serverBootstrap;
 
@@ -47,10 +51,9 @@ public class GrpcWebProxyServer extends TermServer {
                     serverBootstrap = new ServerBootstrap();
                     serverBootstrap.group(bossGroup, workerGroup).channel(NioServerSocketChannel.class)
                             .handler(new LoggingHandler(LogLevel.INFO)).childHandler(new GrpcWebProxyServerInitializer(grpcPort));
-                    Channel ch = serverBootstrap.bind(grpcWebProxyPort).sync().channel();
-//                        System.err.println("Open your web browser and navigate to " + "http" + "://127.0.0.1:" + PORT + '/');
-                    logger.info("grpc web proxy server steated, listening on" + grpcWebProxyPort);
-                    ch.closeFuture().sync();
+                    Channel channel = serverBootstrap.bind(grpcWebProxyPort).sync().channel();
+                    logger.info("grpc web proxy server started, listening on" + grpcWebProxyPort);
+                    channel.closeFuture().sync();
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
@@ -62,7 +65,8 @@ public class GrpcWebProxyServer extends TermServer {
 
     @Override
     public int actualPort() {
-        return this.grpcWebProxyPort;
+        int boundPort = ((InetSocketAddress) channel.localAddress()).getPort();
+        return boundPort;
     }
 
     @Override
