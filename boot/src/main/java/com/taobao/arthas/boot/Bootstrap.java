@@ -64,6 +64,7 @@ public class Bootstrap {
     private static final int DEFAULT_TELNET_PORT = 3658;
     private static final int DEFAULT_HTTP_PORT = 8563;
     private  static final int DEFAULT_GRPC_PORT = 8566;
+    private static final int DEFAULT_GRPC_WEB_PROXY_PORT = 8567;
     private static final String DEFAULT_TARGET_IP = "127.0.0.1";
     private static File ARTHAS_LIB_DIR;
 
@@ -74,6 +75,7 @@ public class Bootstrap {
     private Integer telnetPort;
     private Integer httpPort;
     private Integer grpcPort;
+    private Integer grpcWebProxyPort;
     /**
      * @see com.taobao.arthas.core.config.Configure#DEFAULT_SESSION_TIMEOUT_SECONDS
      */
@@ -197,6 +199,13 @@ public class Bootstrap {
     public void setGrpcPort(int grpcPort) {
         this.grpcPort = grpcPort;
     }
+
+    @Option(longName = "grpc-web-proxy-port")
+    @Description("The target jvm listen grpc web proxy port, default 8567")
+    public void setGrpcWebProxyPort(int grpcWebProxyPort) {
+        this.grpcWebProxyPort = grpcWebProxyPort;
+    }
+
     @Option(longName = "session-timeout")
     @Description("The session timeout seconds, default 1800 (30min)")
     public void setSessionTimeout(Long sessionTimeout) {
@@ -385,6 +394,7 @@ public class Bootstrap {
         long telnetPortPid = -1;
         long httpPortPid = -1;
         long grpcPortPid = -1;
+        long grpcWebProxyPortPid = -1;
         if (bootstrap.getTelnetPortOrDefault() > 0) {
             telnetPortPid = SocketUtils.findTcpListenProcess(bootstrap.getTelnetPortOrDefault());
             if (telnetPortPid > 0) {
@@ -401,6 +411,12 @@ public class Bootstrap {
             grpcPortPid = SocketUtils.findTcpListenProcess(bootstrap.getGrpcPortOrDefault());
             if (grpcPortPid > 0) {
                 AnsiLog.info("Process {} already using port {}", grpcPortPid, bootstrap.getGrpcPortOrDefault());
+            }
+        }
+        if (bootstrap.getGrpcWebProxyPortOrDefault() > 0) {
+            grpcWebProxyPortPid = SocketUtils.findTcpListenProcess(bootstrap.getGrpcWebProxyPortOrDefault());
+            if (grpcWebProxyPortPid > 0) {
+                AnsiLog.info("Process {} already using port {}", grpcWebProxyPortPid, bootstrap.getGrpcWebProxyPortOrDefault());
             }
         }
 
@@ -435,6 +451,15 @@ public class Bootstrap {
                     pid, bootstrap.getGrpcPortOrDefault());
             AnsiLog.error("1. Try to restart arthas-boot, select process {}, shutdown it first with running the 'stop' command.",
                     grpcPortPid);
+            AnsiLog.error("2. Or try to use different http port, for example: java -jar arthas-boot.jar --telnet-port 9998 --http-port 9999 --grpc-port 10000");
+            System.exit(1);
+        }
+
+        if (grpcWebProxyPortPid > 0 && pid != grpcWebProxyPortPid) {
+            AnsiLog.error("Target process {} is not the process using port {}, you will connect to an unexpected process.",
+                    pid, bootstrap.getGrpcWebProxyPortOrDefault());
+            AnsiLog.error("1. Try to restart arthas-boot, select process {}, shutdown it first with running the 'stop' command.",
+                    grpcWebProxyPortPid);
             AnsiLog.error("2. Or try to use different http port, for example: java -jar arthas-boot.jar --telnet-port 9998 --http-port 9999 --grpc-port 10000");
             System.exit(1);
         }
@@ -569,6 +594,11 @@ public class Bootstrap {
                 if (bootstrap.getGrpcPort() != null) {
                     attachArgs.add("-grpc-port");
                     attachArgs.add("" + bootstrap.getGrpcPort());
+                }
+
+                if (bootstrap.getGrpcWebProxyPort() != null) {
+                    attachArgs.add("-grpc-web-proxy-port");
+                    attachArgs.add("" + bootstrap.getGrpcWebProxyPort());
                 }
 
                 attachArgs.add("-core");
@@ -831,7 +861,7 @@ public class Bootstrap {
     public Integer getTelnetPort() {
         return telnetPort;
     }
-    
+
     public int getTelnetPortOrDefault() {
         if (this.telnetPort == null) {
             return DEFAULT_TELNET_PORT;
@@ -861,6 +891,18 @@ public class Bootstrap {
             return DEFAULT_GRPC_PORT;
         } else {
             return this.grpcPort;
+        }
+    }
+
+    public Integer getGrpcWebProxyPort() {
+        return grpcWebProxyPort;
+    }
+
+    public int getGrpcWebProxyPortOrDefault() {
+        if (this.grpcWebProxyPort == null) {
+            return DEFAULT_GRPC_WEB_PROXY_PORT;
+        } else {
+            return this.grpcWebProxyPort;
         }
     }
 

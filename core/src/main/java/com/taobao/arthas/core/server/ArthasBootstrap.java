@@ -253,7 +253,7 @@ public class ArthasBootstrap {
             InstrumentationUtils.trigerRetransformClasses(instrumentation, loaders);
         }
     }
-    
+
     private void initArthasEnvironment(Map<String, String> argsMap) throws IOException {
         if (arthasEnvironment == null) {
             arthasEnvironment = new ArthasEnvironment();
@@ -379,6 +379,11 @@ public class ArthasBootstrap {
             int newGrpcPort = SocketUtils.findAvailableTcpPort();
             configure.setGrpcPort(newGrpcPort);
             logger().info("generate random grpc port: " + newGrpcPort);
+        }
+        if (configure.getGrpcWebProxyPort() != null && configure.getGrpcWebProxyPort() == 0) {
+            int newGrpcWebProxyPort = SocketUtils.findAvailableTcpPort();
+            configure.setGrpcWebProxyPort(newGrpcWebProxyPort);
+            logger().info("generate random grpc port: " + newGrpcWebProxyPort);
         }
 
         // try to find appName

@@ -26,6 +26,7 @@ public class Configure {
     private Integer telnetPort;
     private Integer httpPort;
     private Integer grpcPort;
+    private Integer grpcWebProxyPort;
     private Long javaPid;
     private String arthasCore;
     private String arthasAgent;
@@ -105,6 +106,14 @@ public class Configure {
 
     public void setGrpcPort(Integer grpcPort) {
         this.grpcPort = grpcPort;
+    }
+
+    public Integer getGrpcWebProxyPort() {
+        return grpcWebProxyPort;
+    }
+
+    public void setGrpcWebProxyPort(Integer grpcWebProxyPort) {
+        this.grpcWebProxyPort = grpcWebProxyPort;
     }
 
     public long getJavaPid() {
